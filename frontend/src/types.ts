@@ -1,0 +1,39 @@
+export interface TagLink {
+  label: string;
+  url: string;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  description: string;
+  images: string[];
+  tagsLinks: TagLink[];
+  youtubeUrl: string;
+  youtubeEmbed: string | null;
+  createdAt: string;
+}
+
+export interface Skill {
+  id: string;
+  title: string;
+  category: string;
+  experienceYears: number;
+  proficiencyLevel: string;
+  description: string;
+}
+
+export interface Experience {
+  id: string;
+  companyOrProject: string;
+  role: string;
+  description: string;
+  period: string;
+}
+
+export interface Education {
+  id: string;
+  institution: string;
+  specialty: string;
+  details: string;
+}

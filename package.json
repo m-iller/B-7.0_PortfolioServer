@@ -1,0 +1,50 @@
+{
+  "name": "portfolio-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Secure containerized portfolio, admin panel, Telegram bot, and CLI",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:all": "npm run build && npm --prefix frontend ci --omit=dev && npm --prefix frontend run build",
+    "start:web": "node dist/index.js",
+    "start:bot": "node dist/bot.js",
+    "cli": "node dist/cli.js",
+    "seed": "node dist/seed.js",
+    "dev:web": "tsx watch src/index.ts",
+    "dev:bot": "tsx watch src/bot.ts",
+    "dev:cli": "tsx src/cli.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "sanitize-html": "^2.17.0",
+    "telegraf": "^4.16.3",
+    "zod": "^4.0.17"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/express": "^4.17.23",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.2.1",
+    "@types/sanitize-html": "^2.16.0",
+    "prisma": "^6.13.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2"
+  }
+}

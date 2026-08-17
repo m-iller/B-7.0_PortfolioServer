@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  images      String
+  tagsLinks   String
+  youtubeUrl  String   @default("")
+  createdAt   DateTime @default(now())
+}
+
+model Skill {
+  id               String @id @default(cuid())
+  title            String
+  category         String
+  experienceYears  Float
+  proficiencyLevel String
+  description      String
+}
+
+model Experience {
+  id               String @id @default(cuid())
+  companyOrProject String
+  role             String
+  description      String
+  period           String
+}
+
+model Education {
+  id          String @id @default(cuid())
+  institution String
+  specialty   String
+  details     String
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
