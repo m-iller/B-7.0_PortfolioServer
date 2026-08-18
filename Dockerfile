@@ -37,7 +37,8 @@ COPY --from=frontend-build /frontend/dist ./frontend/dist
 COPY docker/entrypoint.sh /entrypoint.sh
 COPY docker/cli.sh /usr/local/bin/cli
 
-RUN mkdir -p /app/data /app/uploads \
+RUN sed -i 's/\r$//' /entrypoint.sh /usr/local/bin/cli \
+  && mkdir -p /app/data /app/uploads \
   && chmod +x /entrypoint.sh /usr/local/bin/cli \
   && chown -R app:app /app /entrypoint.sh
 
