@@ -8,14 +8,18 @@ datasource db {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  images      String
-  videos      String   @default("[]")
-  tagsLinks   String
-  youtubeUrl  String   @default("")
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  title          String   @default("")
+  description    String   @default("")
+  titleEn        String   @default("")
+  titleRu        String   @default("")
+  descriptionEn  String   @default("")
+  descriptionRu  String   @default("")
+  images         String
+  videos         String   @default("[]")
+  tagsLinks      String
+  youtubeUrl     String   @default("")
+  createdAt      DateTime @default(now())
 }
 
 model Skill {

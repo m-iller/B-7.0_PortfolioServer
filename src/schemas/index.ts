@@ -20,8 +20,10 @@ export const tagLinkSchema = z.object({
 });
 
 export const projectInputSchema = z.object({
-  title: nonEmpty(160),
-  description: nonEmpty(8000),
+  titleEn: nonEmpty(160),
+  titleRu: nonEmpty(160),
+  descriptionEn: nonEmpty(8000),
+  descriptionRu: nonEmpty(8000),
   images: z.array(z.string().min(1).max(512)).max(8).default([]),
   videos: z.array(z.string().min(1).max(512)).max(8).default([]),
   tagsLinks: z.array(tagLinkSchema).max(12).default([]),
