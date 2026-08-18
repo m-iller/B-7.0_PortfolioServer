@@ -6,12 +6,15 @@ import { configureSqlite, prisma } from "./db.js";
 import {
   educationInputSchema,
   experienceInputSchema,
+  profileInputSchema,
+  profileItemInputSchema,
   projectInputSchema,
   skillInputSchema,
 } from "./schemas/index.js";
 import { createEducation } from "./services/educationService.js";
 import { createExperience } from "./services/experienceService.js";
 import { createProject, listProjects } from "./services/projectService.js";
+import { createProfileItem, getProfile, updateProfile } from "./services/profileService.js";
 import { createSkill, listSkills } from "./services/skillService.js";
 import { publicUploadPath } from "./services/uploadService.js";
 import { config } from "./config.js";
@@ -30,6 +33,9 @@ Usage:
   cli add-experience --company "Lab" --role "Engineer" --period "2020-2024" --desc "Work log"
   cli add-education --institution "University" --specialty "ME" --details "Degree notes"
   cli add-project
+  cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
+  cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
+  cli add-contact --label-en Discord --label-ru Discord --value nickname#0000
   cli list-projects
   cli list-skills
 `);
@@ -142,6 +148,32 @@ async function main(): Promise<void> {
     case "add-project":
       await addProjectInteractive();
       break;
+    case "set-profile": {
+      const current = await getProfile();
+      const updated = await updateProfile(
+        profileInputSchema.parse({
+          nameEn: arg("--name-en", current.nameEn),
+          nameRu: arg("--name-ru", current.nameRu),
+          aboutEn: arg("--about-en", current.aboutEn),
+          aboutRu: arg("--about-ru", current.aboutRu),
+        })
+      );
+      console.log(`Updated profile ${updated.nameEn} / ${updated.nameRu}`);
+      break;
+    }
+    case "add-contact": {
+      const created = await createProfileItem(
+        profileItemInputSchema.parse({
+          labelEn: arg("--label-en"),
+          labelRu: arg("--label-ru"),
+          value: arg("--value"),
+          url: arg("--url"),
+          sortOrder: Number(arg("--sort", "0")),
+        })
+      );
+      console.log(`Created contact ${created.id}`);
+      break;
+    }
     case "list-projects":
       for (const project of await listProjects()) {
         console.log(`${project.id}\t${project.titleEn} / ${project.titleRu}`);

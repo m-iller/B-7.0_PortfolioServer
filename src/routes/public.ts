@@ -2,12 +2,21 @@ import { Router } from "express";
 import { listEducation } from "../services/educationService.js";
 import { listExperience } from "../services/experienceService.js";
 import { getProject, listProjects } from "../services/projectService.js";
+import { getProfile } from "../services/profileService.js";
 import { listSkills } from "../services/skillService.js";
 
 export const publicRouter = Router();
 
 publicRouter.get("/health", (_req, res) => {
   res.json({ ok: true, service: "portfolio-web" });
+});
+
+publicRouter.get("/profile", async (_req, res, next) => {
+  try {
+    res.json(await getProfile());
+  } catch (error) {
+    next(error);
+  }
 });
 
 publicRouter.get("/projects", async (_req, res, next) => {

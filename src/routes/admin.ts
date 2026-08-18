@@ -8,6 +8,9 @@ import {
   experienceInputSchema,
   experienceUpdateSchema,
   idParamSchema,
+  profileInputSchema,
+  profileItemInputSchema,
+  profileItemUpdateSchema,
   projectInputSchema,
   projectUpdateSchema,
   skillInputSchema,
@@ -37,6 +40,13 @@ import {
   listSkills,
   updateSkill,
 } from "../services/skillService.js";
+import {
+  createProfileItem,
+  deleteProfileItem,
+  getProfile,
+  updateProfile,
+  updateProfileItem,
+} from "../services/profileService.js";
 import { publicUploadPath, upload } from "../services/uploadService.js";
 
 export const adminRouter = Router();
@@ -224,6 +234,61 @@ adminRouter.delete("/education/:id", validateParams(idParamSchema), async (req, 
     const ok = await deleteEducation(req.params.id);
     if (!ok) {
       res.status(404).json({ error: "Education not found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get("/profile", async (_req, res, next) => {
+  try {
+    res.json(await getProfile());
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put("/profile", validateBody(profileInputSchema), async (req, res, next) => {
+  try {
+    res.json(await updateProfile(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/profile/items", validateBody(profileItemInputSchema), async (req, res, next) => {
+  try {
+    res.status(201).json(await createProfileItem(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put(
+  "/profile/items/:id",
+  validateParams(idParamSchema),
+  validateBody(profileItemUpdateSchema),
+  async (req, res, next) => {
+    try {
+      const updated = await updateProfileItem(req.params.id, req.body);
+      if (!updated) {
+        res.status(404).json({ error: "Profile item not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+adminRouter.delete("/profile/items/:id", validateParams(idParamSchema), async (req, res, next) => {
+  try {
+    const ok = await deleteProfileItem(req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: "Profile item not found" });
       return;
     }
     res.json({ ok: true });

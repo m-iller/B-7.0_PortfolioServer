@@ -15,6 +15,7 @@ export function App() {
           <NavLink to="/" end>
             [ {t.home} ]
           </NavLink>
+          <a href="/#personal">[ {t.personal} ]</a>
           <a href="/#projects">[ {t.projects} ]</a>
           <a href="/#skills">[ {t.skills} ]</a>
           <a href="/#experience">[ {t.experience} ]</a>

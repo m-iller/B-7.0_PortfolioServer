@@ -34,6 +34,24 @@ export interface Experience {
   period: string;
 }
 
+export interface ProfileItem {
+  id: string;
+  labelEn: string;
+  labelRu: string;
+  value: string;
+  url: string;
+  sortOrder: number;
+}
+
+export interface Profile {
+  id: string;
+  nameEn: string;
+  nameRu: string;
+  aboutEn: string;
+  aboutRu: string;
+  items: ProfileItem[];
+}
+
 export interface Education {
   id: string;
   institution: string;

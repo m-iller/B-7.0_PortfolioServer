@@ -46,6 +46,23 @@ model Education {
   details     String
 }
 
+model Profile {
+  id      String @id
+  nameEn  String @default("")
+  nameRu  String @default("")
+  aboutEn String @default("")
+  aboutRu String @default("")
+}
+
+model ProfileItem {
+  id        String @id @default(cuid())
+  labelEn   String
+  labelRu   String
+  value     String
+  url       String @default("")
+  sortOrder Int    @default(0)
+}
+
 model Admin {
   id           String   @id @default(cuid())
   username     String   @unique

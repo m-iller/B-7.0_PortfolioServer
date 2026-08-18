@@ -169,9 +169,10 @@ Moving from a PC to a VDS: copy the repo plus the `data/` and `uploads/` folders
 
 ### Public pages
 
-The home page is a single terminal-style landing with four sections:
+The home page is a single terminal-style landing with five sections:
 
 - Language toggle `[ EN ]` / `[ RU ]` in the top bar (saved in the browser)
+- **Personal** — name, about text, and a list of contacts (social links or nicknames without a URL)
 - **Projects** — bilingual title and description (both required). Tag-links, photo gallery (click for fullscreen), local videos, optional YouTube embed. The toggle switches the shown language.
 - **Skills** — full-width rows grouped under a category name. Years, proficiency, and description are always visible
 - **Experience** — terminal log lines
@@ -183,7 +184,13 @@ The home page is a single terminal-style landing with four sections:
 2. Sign in with `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
 3. You are redirected to `/admin`.
 
-The dashboard has four tabs. Each tab can create, edit, and delete records.
+The dashboard has five tabs. Each tab can create, edit, and delete records.
+
+**Profile**
+
+- Name EN + name RU
+- About EN + about RU
+- Contacts: add as many as you want. Each row has label EN/RU, value (nickname or handle), and optional URL (`https://`, `mailto:`, `tel:`). Leave URL empty for a nickname only.
 
 **Projects**
 
@@ -224,6 +231,9 @@ Optional skill flag: `--proficiency Middle` (default `Middle`).
 ```bash
 docker exec -it portfolio_backend cli add-experience --company "Lab" --role "Engineer" --period "2020-2024" --desc "Work log"
 docker exec -it portfolio_backend cli add-education --institution "University" --specialty "ME" --details "Degree notes"
+docker exec -it portfolio_backend cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
+docker exec -it portfolio_backend cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
+docker exec -it portfolio_backend cli add-contact --label-en Discord --label-ru Discord --value nickname#0000
 docker exec -it portfolio_backend cli list-projects
 docker exec -it portfolio_backend cli list-skills
 ```

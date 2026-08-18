@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { configureSqlite, prisma } from "./db.js";
 import { ensureAdmin } from "./services/adminService.js";
 import { migrateProjectTranslations } from "./services/projectService.js";
+import { ensureProfile } from "./services/profileService.js";
 import { toJson } from "./utils/json.js";
 
 function placeholderSvg(title: string, accent: string): string {
@@ -30,6 +31,7 @@ function writePlaceholder(filename: string, title: string, accent: string): stri
 async function seed(): Promise<void> {
   await configureSqlite();
   await ensureAdmin();
+  await ensureProfile();
   await migrateProjectTranslations();
 
   const projectCount = await prisma.project.count();
@@ -204,6 +206,41 @@ async function seed(): Promise<void> {
           institution: "Community Technical College",
           specialty: "Electronics",
           details: "Dummy coursework covering circuits, CAD, and embedded systems.",
+        },
+      ],
+    });
+  }
+
+  if ((await prisma.profileItem.count()) === 0) {
+    await prisma.profileItem.createMany({
+      data: [
+        {
+          labelEn: "GitHub",
+          labelRu: "GitHub",
+          value: "your-github",
+          url: "https://github.com/",
+          sortOrder: 1,
+        },
+        {
+          labelEn: "Telegram",
+          labelRu: "Telegram",
+          value: "@your_nick",
+          url: "https://t.me/",
+          sortOrder: 2,
+        },
+        {
+          labelEn: "Printables",
+          labelRu: "Printables",
+          value: "your-printables",
+          url: "https://www.printables.com/",
+          sortOrder: 3,
+        },
+        {
+          labelEn: "Discord",
+          labelRu: "Discord",
+          value: "nickname#0000",
+          url: "",
+          sortOrder: 4,
         },
       ],
     });

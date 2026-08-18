@@ -7,11 +7,13 @@ const STORAGE_KEY = "portfolio_lang";
 const copy = {
   en: {
     home: "home",
+    personal: "personal",
     projects: "projects",
     skills: "skills",
     experience: "experience",
     education: "education",
     admin: "admin",
+    personalHead: "$ cat ~/whoami.txt",
     projectsHead: "$ cat ~/projects/*.md",
     skillsHead: "$ find ~/skills -type f",
     experienceHead: "$ tail -f /var/log/experience.log",
@@ -21,11 +23,13 @@ const copy = {
   },
   ru: {
     home: "главная",
+    personal: "обо мне",
     projects: "проекты",
     skills: "навыки",
     experience: "опыт",
     education: "образование",
     admin: "админ",
+    personalHead: "$ cat ~/whoami.txt",
     projectsHead: "$ cat ~/projects/*.md",
     skillsHead: "$ find ~/skills -type f",
     experienceHead: "$ tail -f /var/log/experience.log",

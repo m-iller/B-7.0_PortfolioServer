@@ -21,6 +21,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   const safeClientErrors = new Set([
     "Invalid URL",
     "URL protocol must be http or https",
+    "URL protocol must be http, https, mailto, or tel",
     "youtube_url must be a valid YouTube link",
     "Unsupported file type",
     "File too large",

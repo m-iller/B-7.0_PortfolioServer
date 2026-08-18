@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { sanitizeText, sanitizeUrl, toYoutubeEmbedUrl } from "../utils/sanitize.js";
+import { sanitizeText, sanitizeProfileUrl, sanitizeUrl, toYoutubeEmbedUrl } from "../utils/sanitize.js";
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((value) => sanitizeText(value));
 
 const nonEmpty = (max: number) =>
   z
@@ -65,6 +72,31 @@ export const educationInputSchema = z.object({
 
 export const educationUpdateSchema = educationInputSchema.partial();
 
+export const profileInputSchema = z.object({
+  nameEn: nonEmpty(160),
+  nameRu: nonEmpty(160),
+  aboutEn: optionalText(4000).default(""),
+  aboutRu: optionalText(4000).default(""),
+});
+
+export const profileUpdateSchema = profileInputSchema.partial();
+
+export const profileItemInputSchema = z.object({
+  labelEn: nonEmpty(80),
+  labelRu: nonEmpty(80),
+  value: nonEmpty(200),
+  url: z
+    .string()
+    .trim()
+    .max(2048)
+    .optional()
+    .default("")
+    .transform((value) => (value ? sanitizeProfileUrl(value) : "")),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+
+export const profileItemUpdateSchema = profileItemInputSchema.partial();
+
 export const loginSchema = z.object({
   username: z.string().trim().min(1).max(64),
   password: z.string().min(1).max(128),
@@ -79,3 +111,5 @@ export type SkillInput = z.infer<typeof skillInputSchema>;
 export type ExperienceInput = z.infer<typeof experienceInputSchema>;
 export type EducationInput = z.infer<typeof educationInputSchema>;
 export type TagLink = z.infer<typeof tagLinkSchema>;
+export type ProfileInput = z.infer<typeof profileInputSchema>;
+export type ProfileItemInput = z.infer<typeof profileItemInputSchema>;

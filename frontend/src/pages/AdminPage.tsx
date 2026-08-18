@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiGet, apiSend, apiUpload, ensureCsrf } from "../api";
-import type { Education, Experience, Project, Skill, TagLink } from "../types";
+import type { Education, Experience, Profile, ProfileItem, Project, Skill, TagLink } from "../types";
 
-type Tab = "projects" | "skills" | "experience" | "education";
+type Tab = "profile" | "projects" | "skills" | "experience" | "education";
 
 export function AdminPage() {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ export function AdminPage() {
     <section className="section">
       <h2>$ sudo -i /admin</h2>
       <div className="row">
-        {(["projects", "skills", "experience", "education"] as Tab[]).map((item) => (
+        {(["profile", "projects", "skills", "experience", "education"] as Tab[]).map((item) => (
           <button key={item} className={`btn ${tab === item ? "btn-accent" : ""}`} onClick={() => setTab(item)}>
             [ {item} ]
           </button>
@@ -41,11 +41,182 @@ export function AdminPage() {
         </button>
       </div>
       {status && <p className="status muted">{status}</p>}
+      {tab === "profile" && <ProfileAdmin onStatus={setStatus} />}
       {tab === "projects" && <ProjectAdmin onStatus={setStatus} />}
       {tab === "skills" && <SkillAdmin onStatus={setStatus} />}
       {tab === "experience" && <ExperienceAdmin onStatus={setStatus} />}
       {tab === "education" && <EducationAdmin onStatus={setStatus} />}
     </section>
+  );
+}
+
+function ProfileAdmin({ onStatus }: { onStatus: (value: string) => void }) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [header, setHeader] = useState({ nameEn: "", nameRu: "", aboutEn: "", aboutRu: "" });
+  const emptyItem = { labelEn: "", labelRu: "", value: "", url: "", sortOrder: 0 };
+  const [form, setForm] = useState(emptyItem);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  async function reload() {
+    const data = await apiGet<Profile>("/api/admin/profile");
+    setProfile(data);
+    setHeader({
+      nameEn: data.nameEn,
+      nameRu: data.nameRu,
+      aboutEn: data.aboutEn,
+      aboutRu: data.aboutRu,
+    });
+  }
+
+  useEffect(() => {
+    reload().catch((err: Error) => onStatus(err.message));
+  }, [onStatus]);
+
+  async function saveHeader(event: FormEvent) {
+    event.preventDefault();
+    await apiSend("/api/admin/profile", "PUT", header);
+    onStatus("profile updated");
+    await reload();
+  }
+
+  async function saveItem(event: FormEvent) {
+    event.preventDefault();
+    if (editing) {
+      await apiSend(`/api/admin/profile/items/${editing}`, "PUT", form);
+      onStatus("contact updated");
+    } else {
+      await apiSend("/api/admin/profile/items", "POST", form);
+      onStatus("contact created");
+    }
+    setForm(emptyItem);
+    setEditing(null);
+    await reload();
+  }
+
+  return (
+    <>
+      <form className="form" onSubmit={saveHeader}>
+        <p className="muted">name and about (EN + RU)</p>
+        <label>
+          name EN
+          <input value={header.nameEn} onChange={(e) => setHeader({ ...header, nameEn: e.target.value })} required />
+        </label>
+        <label>
+          name RU
+          <input value={header.nameRu} onChange={(e) => setHeader({ ...header, nameRu: e.target.value })} required />
+        </label>
+        <label>
+          about EN
+          <textarea value={header.aboutEn} onChange={(e) => setHeader({ ...header, aboutEn: e.target.value })} />
+        </label>
+        <label>
+          about RU
+          <textarea value={header.aboutRu} onChange={(e) => setHeader({ ...header, aboutRu: e.target.value })} />
+        </label>
+        <button className="btn btn-accent" type="submit">
+          [ save profile ]
+        </button>
+      </form>
+
+      <form className="form" onSubmit={saveItem}>
+        <p className="muted">contact: link (url filled) or nickname only (url empty)</p>
+        <label>
+          label EN
+          <input value={form.labelEn} onChange={(e) => setForm({ ...form, labelEn: e.target.value })} required />
+        </label>
+        <label>
+          label RU
+          <input value={form.labelRu} onChange={(e) => setForm({ ...form, labelRu: e.target.value })} required />
+        </label>
+        <label>
+          value / nickname
+          <input value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} required />
+        </label>
+        <label>
+          url (optional)
+          <input
+            value={form.url}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            placeholder="https://... or mailto: or leave empty"
+          />
+        </label>
+        <label>
+          sort
+          <input
+            type="number"
+            min={0}
+            value={form.sortOrder}
+            onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
+          />
+        </label>
+        <div className="row">
+          <button className="btn btn-accent" type="submit">
+            [ {editing ? "update" : "add"} contact ]
+          </button>
+          {editing && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setEditing(null);
+                setForm(emptyItem);
+              }}
+            >
+              [ cancel ]
+            </button>
+          )}
+        </div>
+      </form>
+
+      <table className="table">
+        <thead>
+          <tr>
+            <th>label</th>
+            <th>value</th>
+            <th>url</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {(profile?.items ?? []).map((item: ProfileItem) => (
+            <tr key={item.id}>
+              <td>
+                {item.labelEn} / {item.labelRu}
+              </td>
+              <td>{item.value}</td>
+              <td>{item.url || "—"}</td>
+              <td className="row">
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setEditing(item.id);
+                    setForm({
+                      labelEn: item.labelEn,
+                      labelRu: item.labelRu,
+                      value: item.value,
+                      url: item.url,
+                      sortOrder: item.sortOrder,
+                    });
+                  }}
+                >
+                  [ edit ]
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={async () => {
+                    await apiSend(`/api/admin/profile/items/${item.id}`, "DELETE");
+                    onStatus("contact deleted");
+                    await reload();
+                  }}
+                >
+                  [ delete ]
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
 

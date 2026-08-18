@@ -10,6 +10,7 @@ export function sanitizeText(input: string): string {
 }
 
 const SAFE_PROTOCOLS = new Set(["http:", "https:"]);
+const PROFILE_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 
 export function sanitizeUrl(input: string): string {
   const trimmed = input.trim();
@@ -22,6 +23,22 @@ export function sanitizeUrl(input: string): string {
   }
   if (!SAFE_PROTOCOLS.has(parsed.protocol)) {
     throw new Error("URL protocol must be http or https");
+  }
+  return parsed.toString();
+}
+
+/** Optional contact URL. Empty = nickname only. Allows http(s), mailto, tel. */
+export function sanitizeProfileUrl(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error("Invalid URL");
+  }
+  if (!PROFILE_PROTOCOLS.has(parsed.protocol)) {
+    throw new Error("URL protocol must be http, https, mailto, or tel");
   }
   return parsed.toString();
 }

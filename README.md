@@ -17,7 +17,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Use `[ EN ]` / `[ RU ]` on the main page to switch language. Admin login: `/login` using `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Projects require both English and Russian title and description.
+Open [http://localhost:3000](http://localhost:3000). First tab is **personal** (name, about, social links and nicknames — all editable in `/admin`). Use `[ EN ]` / `[ RU ]` on the main page to switch language. Admin login: `/login` using `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Projects require both English and Russian title and description.
 
 Volumes:
 
@@ -41,6 +41,9 @@ Volumes:
 ```bash
 docker exec -it portfolio_backend cli add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc "Solid modeling, reverse engineering"
 docker exec -it portfolio_backend cli add-project
+docker exec -it portfolio_backend cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
+docker exec -it portfolio_backend cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
+docker exec -it portfolio_backend cli add-contact --label-en Discord --label-ru Discord --value nickname#0000
 docker exec -it portfolio_backend cli add-experience --company "Lab" --role "Engineer" --period "2020-2024" --desc "Work log"
 docker exec -it portfolio_backend cli add-education --institution "University" --specialty "ME" --details "Degree notes"
 docker exec -it portfolio_backend cli list-projects
