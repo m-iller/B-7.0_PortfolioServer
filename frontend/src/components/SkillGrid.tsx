@@ -1,9 +1,12 @@
+import { useLang } from "../i18n";
 import type { Skill } from "../types";
 
 export function SkillGrid({ skills }: { skills: Skill[] }) {
+  const { lang } = useLang();
   const groups = skills.reduce<Record<string, Skill[]>>((acc, skill) => {
-    acc[skill.category] = acc[skill.category] ?? [];
-    acc[skill.category].push(skill);
+    const category = lang === "ru" ? skill.categoryRu : skill.categoryEn;
+    acc[category] = acc[category] ?? [];
+    acc[category].push(skill);
     return acc;
   }, {});
 
@@ -16,12 +19,12 @@ export function SkillGrid({ skills }: { skills: Skill[] }) {
             {items.map((skill) => (
               <div className="skill" key={skill.id}>
                 <div className="skill-head">
-                  <strong>{skill.title}</strong>
+                  <strong>{lang === "ru" ? skill.titleRu : skill.titleEn}</strong>
                   <span className="skill-meta">
-                    {skill.experienceYears}y · {skill.proficiencyLevel}
+                    {skill.experienceYears}y · {lang === "ru" ? skill.proficiencyLevelRu : skill.proficiencyLevelEn}
                   </span>
                 </div>
-                <p className="skill-desc">{skill.description}</p>
+                <p className="skill-desc">{lang === "ru" ? skill.descriptionRu : skill.descriptionEn}</p>
               </div>
             ))}
           </div>

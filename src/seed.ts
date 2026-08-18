@@ -3,8 +3,11 @@ import path from "node:path";
 import { config } from "./config.js";
 import { configureSqlite, prisma } from "./db.js";
 import { ensureAdmin } from "./services/adminService.js";
+import { migrateEducationTranslations } from "./services/educationService.js";
+import { migrateExperienceTranslations } from "./services/experienceService.js";
 import { migrateProjectTranslations } from "./services/projectService.js";
 import { ensureProfile } from "./services/profileService.js";
+import { migrateSkillTranslations } from "./services/skillService.js";
 import { toJson } from "./utils/json.js";
 
 function placeholderSvg(title: string, accent: string): string {
@@ -33,6 +36,9 @@ async function seed(): Promise<void> {
   await ensureAdmin();
   await ensureProfile();
   await migrateProjectTranslations();
+  await migrateSkillTranslations();
+  await migrateExperienceTranslations();
+  await migrateEducationTranslations();
 
   const projectCount = await prisma.project.count();
   if (projectCount === 0) {
@@ -131,45 +137,93 @@ async function seed(): Promise<void> {
       data: [
         {
           title: "PTC Creo",
+          titleEn: "PTC Creo",
+          titleRu: "PTC Creo",
           category: "Mechanics",
+          categoryEn: "Mechanics",
+          categoryRu: "Механика",
           experienceYears: 2,
           proficiencyLevel: "Middle",
+          proficiencyLevelEn: "Middle",
+          proficiencyLevelRu: "Средний",
           description: "Solid modeling, assemblies, reverse engineering. Priority: parametric parts.",
+          descriptionEn: "Solid modeling, assemblies, reverse engineering. Priority: parametric parts.",
+          descriptionRu: "Твердотельное моделирование, сборки, реверс-инжиниринг. Приоритет: параметрические детали.",
         },
         {
           title: "FDM Printing",
+          titleEn: "FDM Printing",
+          titleRu: "FDM-печать",
           category: "Mechanics",
+          categoryEn: "Mechanics",
+          categoryRu: "Механика",
           experienceYears: 3,
           proficiencyLevel: "Senior",
+          proficiencyLevelEn: "Senior",
+          proficiencyLevelRu: "Старший",
           description: "FDM printing, priority PLA, also PETG and ABS. Slicer profiles and support strategy.",
+          descriptionEn: "FDM printing, priority PLA, also PETG and ABS. Slicer profiles and support strategy.",
+          descriptionRu: "FDM-печать, приоритет PLA, также PETG и ABS. Профили слайсера и стратегия поддержек.",
         },
         {
           title: "KiCad",
+          titleEn: "KiCad",
+          titleRu: "KiCad",
           category: "Electronics",
+          categoryEn: "Electronics",
+          categoryRu: "Электроника",
           experienceYears: 1.5,
           proficiencyLevel: "Junior",
+          proficiencyLevelEn: "Junior",
+          proficiencyLevelRu: "Младший",
           description: "Schematic capture, PCB layout, basic DRC. Through-hole and simple SMD boards.",
+          descriptionEn: "Schematic capture, PCB layout, basic DRC. Through-hole and simple SMD boards.",
+          descriptionRu: "Схемы, разводка плат, базовый DRC. Сквозной монтаж и простые SMD-платы.",
         },
         {
           title: "STM32",
+          titleEn: "STM32",
+          titleRu: "STM32",
           category: "Electronics",
+          categoryEn: "Electronics",
+          categoryRu: "Электроника",
           experienceYears: 2,
           proficiencyLevel: "Middle",
+          proficiencyLevelEn: "Middle",
+          proficiencyLevelRu: "Средний",
           description: "Bare-metal and HAL firmware, UART/SPI/I2C, timers, and basic RTOS tasks.",
+          descriptionEn: "Bare-metal and HAL firmware, UART/SPI/I2C, timers, and basic RTOS tasks.",
+          descriptionRu: "Прошивка bare-metal и HAL, UART/SPI/I2C, таймеры и базовые задачи RTOS.",
         },
         {
           title: "TypeScript",
+          titleEn: "TypeScript",
+          titleRu: "TypeScript",
           category: "Programming",
+          categoryEn: "Programming",
+          categoryRu: "Программирование",
           experienceYears: 4,
           proficiencyLevel: "Senior",
+          proficiencyLevelEn: "Senior",
+          proficiencyLevelRu: "Старший",
           description: "Node.js services, typed APIs, React frontends. Strict mode by default.",
+          descriptionEn: "Node.js services, typed APIs, React frontends. Strict mode by default.",
+          descriptionRu: "Сервисы Node.js, типизированные API, фронтенд на React. Strict mode по умолчанию.",
         },
         {
           title: "Python",
+          titleEn: "Python",
+          titleRu: "Python",
           category: "Programming",
+          categoryEn: "Programming",
+          categoryRu: "Программирование",
           experienceYears: 3,
           proficiencyLevel: "Middle",
+          proficiencyLevelEn: "Middle",
+          proficiencyLevelRu: "Средний",
           description: "Scripts, FastAPI prototypes, data munging, and hardware test harnesses.",
+          descriptionEn: "Scripts, FastAPI prototypes, data munging, and hardware test harnesses.",
+          descriptionRu: "Скрипты, прототипы FastAPI, обработка данных и стенды для железа.",
         },
       ],
     });
@@ -180,14 +234,26 @@ async function seed(): Promise<void> {
       data: [
         {
           companyOrProject: "Template Workshop",
+          companyOrProjectEn: "Template Workshop",
+          companyOrProjectRu: "Шаблонная мастерская",
           role: "Mechanical / Firmware Engineer",
+          roleEn: "Mechanical / Firmware Engineer",
+          roleRu: "Инженер механик / прошивок",
           description: "Placeholder role. Replace with real employment or project history.",
+          descriptionEn: "Placeholder role. Replace with real employment or project history.",
+          descriptionRu: "Заглушка. Замените на реальный опыт работы или проект.",
           period: "2022-2024",
         },
         {
           companyOrProject: "Open Hardware Lab",
+          companyOrProjectEn: "Open Hardware Lab",
+          companyOrProjectRu: "Лаборатория открытого железа",
           role: "Contributor",
+          roleEn: "Contributor",
+          roleRu: "Участник",
           description: "Dummy log entry for the terminal experience feed.",
+          descriptionEn: "Dummy log entry for the terminal experience feed.",
+          descriptionRu: "Демо-запись для ленты опыта в терминальном стиле.",
           period: "2020-2022",
         },
       ],
@@ -199,13 +265,25 @@ async function seed(): Promise<void> {
       data: [
         {
           institution: "Template University",
+          institutionEn: "Template University",
+          institutionRu: "Шаблонный университет",
           specialty: "Mechanical Engineering",
+          specialtyEn: "Mechanical Engineering",
+          specialtyRu: "Машиностроение",
           details: "Placeholder degree. Swap this record from the admin panel.",
+          detailsEn: "Placeholder degree. Swap this record from the admin panel.",
+          detailsRu: "Заглушка диплома. Замените запись в админ-панели.",
         },
         {
           institution: "Community Technical College",
+          institutionEn: "Community Technical College",
+          institutionRu: "Технический колледж",
           specialty: "Electronics",
+          specialtyEn: "Electronics",
+          specialtyRu: "Электроника",
           details: "Dummy coursework covering circuits, CAD, and embedded systems.",
+          detailsEn: "Dummy coursework covering circuits, CAD, and embedded systems.",
+          detailsRu: "Демо-курсы: схемы, CAD и встраиваемые системы.",
         },
       ],
     });

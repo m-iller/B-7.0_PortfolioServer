@@ -41,7 +41,7 @@ Volumes:
 ## CLI
 
 ```bash
-docker exec -it portfolio_backend cli add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc "Solid modeling, reverse engineering"
+docker exec -it portfolio_backend cli add-skill --name-en "PTC Creo" --name-ru "PTC Creo" --category-en "Mechanics" --category-ru "Механика" --exp 2 --desc-en "Solid modeling" --desc-ru "Твердотельное моделирование"
 docker exec -it portfolio_backend cli add-project
 docker exec -it portfolio_backend cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
 docker exec -it portfolio_backend cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser

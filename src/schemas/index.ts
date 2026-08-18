@@ -46,28 +46,38 @@ export const projectInputSchema = z.object({
 export const projectUpdateSchema = projectInputSchema.partial();
 
 export const skillInputSchema = z.object({
-  title: nonEmpty(120),
-  category: nonEmpty(80),
+  titleEn: nonEmpty(120),
+  titleRu: nonEmpty(120),
+  categoryEn: nonEmpty(80),
+  categoryRu: nonEmpty(80),
   experienceYears: z.coerce.number().min(0).max(80),
-  proficiencyLevel: nonEmpty(40),
-  description: nonEmpty(4000),
+  proficiencyLevelEn: nonEmpty(40),
+  proficiencyLevelRu: nonEmpty(40),
+  descriptionEn: nonEmpty(4000),
+  descriptionRu: nonEmpty(4000),
 });
 
 export const skillUpdateSchema = skillInputSchema.partial();
 
 export const experienceInputSchema = z.object({
-  companyOrProject: nonEmpty(160),
-  role: nonEmpty(160),
-  description: nonEmpty(4000),
+  companyOrProjectEn: nonEmpty(160),
+  companyOrProjectRu: nonEmpty(160),
+  roleEn: nonEmpty(160),
+  roleRu: nonEmpty(160),
+  descriptionEn: nonEmpty(4000),
+  descriptionRu: nonEmpty(4000),
   period: nonEmpty(80),
 });
 
 export const experienceUpdateSchema = experienceInputSchema.partial();
 
 export const educationInputSchema = z.object({
-  institution: nonEmpty(160),
-  specialty: nonEmpty(160),
-  details: nonEmpty(4000),
+  institutionEn: nonEmpty(160),
+  institutionRu: nonEmpty(160),
+  specialtyEn: nonEmpty(160),
+  specialtyRu: nonEmpty(160),
+  detailsEn: nonEmpty(4000),
+  detailsRu: nonEmpty(4000),
 });
 
 export const educationUpdateSchema = educationInputSchema.partial();

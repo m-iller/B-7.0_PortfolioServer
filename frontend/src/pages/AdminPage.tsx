@@ -404,11 +404,15 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
 
 function SkillAdmin({ onStatus }: { onStatus: (value: string) => void }) {
   const empty = {
-    title: "",
-    category: "Programming",
+    titleEn: "",
+    titleRu: "",
+    categoryEn: "Programming",
+    categoryRu: "Программирование",
     experienceYears: 1,
-    proficiencyLevel: "Middle",
-    description: "",
+    proficiencyLevelEn: "Middle",
+    proficiencyLevelRu: "Средний",
+    descriptionEn: "",
+    descriptionRu: "",
   };
   const [items, setItems] = useState<Skill[]>([]);
   const [form, setForm] = useState(empty);
@@ -440,21 +444,39 @@ function SkillAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     <>
       <form className="form" onSubmit={onSubmit}>
         <label>
-          title
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          title EN
+          <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} required />
         </label>
         <label>
-          category
+          title RU
+          <input value={form.titleRu} onChange={(e) => setForm({ ...form, titleRu: e.target.value })} required />
+        </label>
+        <label>
+          category EN
           <input
-            list="skill-categories"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            list="skill-categories-en"
+            value={form.categoryEn}
+            onChange={(e) => setForm({ ...form, categoryEn: e.target.value })}
             required
           />
-          <datalist id="skill-categories">
+          <datalist id="skill-categories-en">
             <option value="Mechanics" />
             <option value="Electronics" />
             <option value="Programming" />
+          </datalist>
+        </label>
+        <label>
+          category RU
+          <input
+            list="skill-categories-ru"
+            value={form.categoryRu}
+            onChange={(e) => setForm({ ...form, categoryRu: e.target.value })}
+            required
+          />
+          <datalist id="skill-categories-ru">
+            <option value="Механика" />
+            <option value="Электроника" />
+            <option value="Программирование" />
           </datalist>
         </label>
         <label>
@@ -468,12 +490,36 @@ function SkillAdmin({ onStatus }: { onStatus: (value: string) => void }) {
           />
         </label>
         <label>
-          proficiency
-          <input value={form.proficiencyLevel} onChange={(e) => setForm({ ...form, proficiencyLevel: e.target.value })} />
+          proficiency EN
+          <input
+            value={form.proficiencyLevelEn}
+            onChange={(e) => setForm({ ...form, proficiencyLevelEn: e.target.value })}
+            required
+          />
         </label>
         <label>
-          description
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+          proficiency RU
+          <input
+            value={form.proficiencyLevelRu}
+            onChange={(e) => setForm({ ...form, proficiencyLevelRu: e.target.value })}
+            required
+          />
+        </label>
+        <label>
+          description EN
+          <textarea
+            value={form.descriptionEn}
+            onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
+            required
+          />
+        </label>
+        <label>
+          description RU
+          <textarea
+            value={form.descriptionRu}
+            onChange={(e) => setForm({ ...form, descriptionRu: e.target.value })}
+            required
+          />
         </label>
         <button className="btn btn-accent" type="submit">
           [ {editing ? "update" : "create"} skill ]
@@ -482,7 +528,7 @@ function SkillAdmin({ onStatus }: { onStatus: (value: string) => void }) {
       <table className="table">
         <thead>
           <tr>
-            <th>title</th>
+            <th>title EN / RU</th>
             <th>category</th>
             <th></th>
           </tr>
@@ -490,19 +536,27 @@ function SkillAdmin({ onStatus }: { onStatus: (value: string) => void }) {
         <tbody>
           {items.map((item) => (
             <tr key={item.id}>
-              <td>{item.title}</td>
-              <td>{item.category}</td>
+              <td>
+                {item.titleEn} / {item.titleRu}
+              </td>
+              <td>
+                {item.categoryEn} / {item.categoryRu}
+              </td>
               <td className="row">
                 <button
                   className="btn"
                   onClick={() => {
                     setEditing(item.id);
                     setForm({
-                      title: item.title,
-                      category: item.category,
+                      titleEn: item.titleEn,
+                      titleRu: item.titleRu,
+                      categoryEn: item.categoryEn,
+                      categoryRu: item.categoryRu,
                       experienceYears: item.experienceYears,
-                      proficiencyLevel: item.proficiencyLevel,
-                      description: item.description,
+                      proficiencyLevelEn: item.proficiencyLevelEn,
+                      proficiencyLevelRu: item.proficiencyLevelRu,
+                      descriptionEn: item.descriptionEn,
+                      descriptionRu: item.descriptionRu,
                     });
                   }}
                 >
@@ -528,7 +582,15 @@ function SkillAdmin({ onStatus }: { onStatus: (value: string) => void }) {
 }
 
 function ExperienceAdmin({ onStatus }: { onStatus: (value: string) => void }) {
-  const empty = { companyOrProject: "", role: "", period: "", description: "" };
+  const empty = {
+    companyOrProjectEn: "",
+    companyOrProjectRu: "",
+    roleEn: "",
+    roleRu: "",
+    period: "",
+    descriptionEn: "",
+    descriptionRu: "",
+  };
   const [items, setItems] = useState<Experience[]>([]);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
@@ -558,20 +620,48 @@ function ExperienceAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     <>
       <form className="form" onSubmit={onSubmit}>
         <label>
-          company_or_project
-          <input value={form.companyOrProject} onChange={(e) => setForm({ ...form, companyOrProject: e.target.value })} required />
+          company_or_project EN
+          <input
+            value={form.companyOrProjectEn}
+            onChange={(e) => setForm({ ...form, companyOrProjectEn: e.target.value })}
+            required
+          />
         </label>
         <label>
-          role
-          <input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} required />
+          company_or_project RU
+          <input
+            value={form.companyOrProjectRu}
+            onChange={(e) => setForm({ ...form, companyOrProjectRu: e.target.value })}
+            required
+          />
+        </label>
+        <label>
+          role EN
+          <input value={form.roleEn} onChange={(e) => setForm({ ...form, roleEn: e.target.value })} required />
+        </label>
+        <label>
+          role RU
+          <input value={form.roleRu} onChange={(e) => setForm({ ...form, roleRu: e.target.value })} required />
         </label>
         <label>
           period
           <input value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} required />
         </label>
         <label>
-          description
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+          description EN
+          <textarea
+            value={form.descriptionEn}
+            onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
+            required
+          />
+        </label>
+        <label>
+          description RU
+          <textarea
+            value={form.descriptionRu}
+            onChange={(e) => setForm({ ...form, descriptionRu: e.target.value })}
+            required
+          />
         </label>
         <button className="btn btn-accent" type="submit">
           [ {editing ? "update" : "create"} experience ]
@@ -582,14 +672,22 @@ function ExperienceAdmin({ onStatus }: { onStatus: (value: string) => void }) {
           {items.map((item) => (
             <tr key={item.id}>
               <td>
-                [{item.period}] {item.role} @ {item.companyOrProject}
+                [{item.period}] {item.roleEn} / {item.roleRu} @ {item.companyOrProjectEn}
               </td>
               <td className="row">
                 <button
                   className="btn"
                   onClick={() => {
                     setEditing(item.id);
-                    setForm(item);
+                    setForm({
+                      companyOrProjectEn: item.companyOrProjectEn,
+                      companyOrProjectRu: item.companyOrProjectRu,
+                      roleEn: item.roleEn,
+                      roleRu: item.roleRu,
+                      period: item.period,
+                      descriptionEn: item.descriptionEn,
+                      descriptionRu: item.descriptionRu,
+                    });
                   }}
                 >
                   [ edit ]
@@ -613,7 +711,14 @@ function ExperienceAdmin({ onStatus }: { onStatus: (value: string) => void }) {
 }
 
 function EducationAdmin({ onStatus }: { onStatus: (value: string) => void }) {
-  const empty = { institution: "", specialty: "", details: "" };
+  const empty = {
+    institutionEn: "",
+    institutionRu: "",
+    specialtyEn: "",
+    specialtyRu: "",
+    detailsEn: "",
+    detailsRu: "",
+  };
   const [items, setItems] = useState<Education[]>([]);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
@@ -643,16 +748,28 @@ function EducationAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     <>
       <form className="form" onSubmit={onSubmit}>
         <label>
-          institution
-          <input value={form.institution} onChange={(e) => setForm({ ...form, institution: e.target.value })} required />
+          institution EN
+          <input value={form.institutionEn} onChange={(e) => setForm({ ...form, institutionEn: e.target.value })} required />
         </label>
         <label>
-          specialty
-          <input value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })} required />
+          institution RU
+          <input value={form.institutionRu} onChange={(e) => setForm({ ...form, institutionRu: e.target.value })} required />
         </label>
         <label>
-          details
-          <textarea value={form.details} onChange={(e) => setForm({ ...form, details: e.target.value })} required />
+          specialty EN
+          <input value={form.specialtyEn} onChange={(e) => setForm({ ...form, specialtyEn: e.target.value })} required />
+        </label>
+        <label>
+          specialty RU
+          <input value={form.specialtyRu} onChange={(e) => setForm({ ...form, specialtyRu: e.target.value })} required />
+        </label>
+        <label>
+          details EN
+          <textarea value={form.detailsEn} onChange={(e) => setForm({ ...form, detailsEn: e.target.value })} required />
+        </label>
+        <label>
+          details RU
+          <textarea value={form.detailsRu} onChange={(e) => setForm({ ...form, detailsRu: e.target.value })} required />
         </label>
         <button className="btn btn-accent" type="submit">
           [ {editing ? "update" : "create"} education ]
@@ -663,14 +780,21 @@ function EducationAdmin({ onStatus }: { onStatus: (value: string) => void }) {
           {items.map((item) => (
             <tr key={item.id}>
               <td>
-                {item.institution} — {item.specialty}
+                {item.institutionEn} / {item.institutionRu} — {item.specialtyEn}
               </td>
               <td className="row">
                 <button
                   className="btn"
                   onClick={() => {
                     setEditing(item.id);
-                    setForm(item);
+                    setForm({
+                      institutionEn: item.institutionEn,
+                      institutionRu: item.institutionRu,
+                      specialtyEn: item.specialtyEn,
+                      specialtyRu: item.specialtyRu,
+                      detailsEn: item.detailsEn,
+                      detailsRu: item.detailsRu,
+                    });
                   }}
                 >
                   [ edit ]

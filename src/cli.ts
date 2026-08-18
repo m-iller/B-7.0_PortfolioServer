@@ -30,9 +30,9 @@ function usage(): never {
   console.log(`Portfolio CLI
 
 Usage:
-  cli add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc "Solid modeling" [--proficiency Middle]
-  cli add-experience --company "Lab" --role "Engineer" --period "2020-2024" --desc "Work log"
-  cli add-education --institution "University" --specialty "ME" --details "Degree notes"
+  cli add-skill --name-en "PTC Creo" --name-ru "PTC Creo" --category-en "Mechanics" --category-ru "Механика" --exp 2 --desc-en "Solid modeling" --desc-ru "Твердотельное моделирование" [--proficiency-en Middle --proficiency-ru Средний]
+  cli add-experience --company-en "Lab" --company-ru "Лаборатория" --role-en "Engineer" --role-ru "Инженер" --period "2020-2024" --desc-en "Work log" --desc-ru "Журнал работ"
+  cli add-education --institution-en "University" --institution-ru "Университет" --specialty-en "ME" --specialty-ru "Механика" --details-en "Degree notes" --details-ru "Заметки"
   cli add-project
   cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
   cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
@@ -114,11 +114,15 @@ async function main(): Promise<void> {
     case "add-skill": {
       const created = await createSkill(
         skillInputSchema.parse({
-          title: arg("--name"),
-          category: arg("--category"),
+          titleEn: arg("--name-en", arg("--name")),
+          titleRu: arg("--name-ru", arg("--name")),
+          categoryEn: arg("--category-en", arg("--category")),
+          categoryRu: arg("--category-ru", arg("--category")),
           experienceYears: Number(arg("--exp", "0")),
-          proficiencyLevel: arg("--proficiency", "Middle"),
-          description: arg("--desc"),
+          proficiencyLevelEn: arg("--proficiency-en", arg("--proficiency", "Middle")),
+          proficiencyLevelRu: arg("--proficiency-ru", arg("--proficiency", "Средний")),
+          descriptionEn: arg("--desc-en", arg("--desc")),
+          descriptionRu: arg("--desc-ru", arg("--desc")),
         })
       );
       console.log(`Created skill ${created.id}`);
@@ -127,10 +131,13 @@ async function main(): Promise<void> {
     case "add-experience": {
       const created = await createExperience(
         experienceInputSchema.parse({
-          companyOrProject: arg("--company"),
-          role: arg("--role"),
+          companyOrProjectEn: arg("--company-en", arg("--company")),
+          companyOrProjectRu: arg("--company-ru", arg("--company")),
+          roleEn: arg("--role-en", arg("--role")),
+          roleRu: arg("--role-ru", arg("--role")),
           period: arg("--period"),
-          description: arg("--desc"),
+          descriptionEn: arg("--desc-en", arg("--desc")),
+          descriptionRu: arg("--desc-ru", arg("--desc")),
         })
       );
       console.log(`Created experience ${created.id}`);
@@ -139,9 +146,12 @@ async function main(): Promise<void> {
     case "add-education": {
       const created = await createEducation(
         educationInputSchema.parse({
-          institution: arg("--institution"),
-          specialty: arg("--specialty"),
-          details: arg("--details"),
+          institutionEn: arg("--institution-en", arg("--institution")),
+          institutionRu: arg("--institution-ru", arg("--institution")),
+          specialtyEn: arg("--specialty-en", arg("--specialty")),
+          specialtyRu: arg("--specialty-ru", arg("--specialty")),
+          detailsEn: arg("--details-en", arg("--details")),
+          detailsRu: arg("--details-ru", arg("--details")),
         })
       );
       console.log(`Created education ${created.id}`);
@@ -190,7 +200,7 @@ async function main(): Promise<void> {
       break;
     case "list-skills":
       for (const skill of await listSkills()) {
-        console.log(`${skill.id}\t[${skill.category}]\t${skill.title}`);
+        console.log(`${skill.id}\t[${skill.categoryEn}]\t${skill.titleEn} / ${skill.titleRu}`);
       }
       break;
     default:

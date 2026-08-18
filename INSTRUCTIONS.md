@@ -176,9 +176,9 @@ The home page is a single terminal-style landing with five sections:
 - Language toggle `[ EN ]` / `[ RU ]` in the top bar (saved in the browser)
 - **Personal** — name, about text, and a list of contacts (social links or nicknames without a URL)
 - **Projects** — bilingual title and description (both required). Tag-links, photo gallery (click for fullscreen), local videos, optional YouTube embed. The toggle switches the shown language.
-- **Skills** — full-width rows grouped under a category name. Years, proficiency, and description are always visible
-- **Experience** — terminal log lines
-- **Education** — terminal log lines
+- **Skills** — full-width rows grouped by bilingual category. Years, proficiency, and description follow the EN/RU toggle
+- **Experience** — terminal log lines (role, company, description switch with language)
+- **Education** — terminal log lines (institution, specialty, details switch with language)
 
 ### Web admin (`/admin`)
 
@@ -205,16 +205,17 @@ The dashboard has five tabs. Each tab can create, edit, and delete records.
 
 **Skills**
 
-- Title, category name (Mechanics / Electronics / Programming, or any custom name)
-- Years of experience, proficiency, description
+- Title EN/RU, category EN/RU, proficiency EN/RU, description EN/RU (all required)
+- Years of experience (number)
 
 **Experience**
 
-- Company or project, role, period (`2020-2024`), description
+- Company EN/RU, role EN/RU, description EN/RU (all required)
+- Period (`2020-2024`)
 
 **Education**
 
-- Institution, specialty, details
+- Institution EN/RU, specialty EN/RU, details EN/RU (all required)
 
 Use **[ logout ]** when finished. Sessions last 8 hours (`JWT_EXPIRES_IN`).
 
@@ -225,10 +226,10 @@ Use **[ logout ]** when finished. Sessions last 8 hours (`JWT_EXPIRES_IN`).
 The CLI writes to the same SQLite file and `uploads` volume as the website.
 
 ```bash
-docker exec -it portfolio_backend cli add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc "Solid modeling, reverse engineering"
+docker exec -it portfolio_backend cli add-skill --name-en "PTC Creo" --name-ru "PTC Creo" --category-en "Mechanics" --category-ru "Механика" --exp 2 --desc-en "Solid modeling" --desc-ru "Твердотельное моделирование"
 ```
 
-Optional skill flag: `--proficiency Middle` (default `Middle`).
+Optional: `--proficiency-en Middle --proficiency-ru Средний`. Old single-language flags (`--name`, `--desc`) still copy into both languages.
 
 ```bash
 docker exec -it portfolio_backend cli add-experience --company "Lab" --role "Engineer" --period "2020-2024" --desc "Work log"

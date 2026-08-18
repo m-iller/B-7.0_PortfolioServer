@@ -23,27 +23,47 @@ model Project {
 }
 
 model Skill {
-  id               String @id @default(cuid())
-  title            String
-  category         String
-  experienceYears  Float
-  proficiencyLevel String
-  description      String
+  id                  String @id @default(cuid())
+  title               String @default("")
+  category            String @default("")
+  experienceYears     Float
+  proficiencyLevel    String @default("")
+  description         String @default("")
+  titleEn             String @default("")
+  titleRu             String @default("")
+  categoryEn          String @default("")
+  categoryRu          String @default("")
+  proficiencyLevelEn  String @default("")
+  proficiencyLevelRu  String @default("")
+  descriptionEn       String @default("")
+  descriptionRu       String @default("")
 }
 
 model Experience {
-  id               String @id @default(cuid())
-  companyOrProject String
-  role             String
-  description      String
-  period           String
+  id                   String @id @default(cuid())
+  companyOrProject     String @default("")
+  role                 String @default("")
+  description          String @default("")
+  period               String
+  companyOrProjectEn   String @default("")
+  companyOrProjectRu   String @default("")
+  roleEn               String @default("")
+  roleRu               String @default("")
+  descriptionEn        String @default("")
+  descriptionRu        String @default("")
 }
 
 model Education {
-  id          String @id @default(cuid())
-  institution String
-  specialty   String
-  details     String
+  id             String @id @default(cuid())
+  institution    String @default("")
+  specialty      String @default("")
+  details        String @default("")
+  institutionEn  String @default("")
+  institutionRu  String @default("")
+  specialtyEn    String @default("")
+  specialtyRu    String @default("")
+  detailsEn      String @default("")
+  detailsRu      String @default("")
 }
 
 model Profile {

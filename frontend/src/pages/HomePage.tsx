@@ -7,7 +7,7 @@ import { useLang } from "../i18n";
 import type { Education, Experience, Profile, Project, Skill } from "../types";
 
 export function HomePage() {
-  const { t } = useLang();
+  const { lang, t } = useLang();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -64,9 +64,10 @@ export function HomePage() {
           {experience.map((item) => (
             <p className="log-line" key={item.id}>
               <span className="ts">[{item.period}]</span>{" "}
-              <span className="cmd">{t.running}</span> {item.role} @ {item.companyOrProject}
+              <span className="cmd">{t.running}</span> {lang === "ru" ? item.roleRu : item.roleEn} @{" "}
+              {lang === "ru" ? item.companyOrProjectRu : item.companyOrProjectEn}
               {"\n"}
-              <span className="muted">  # {item.description}</span>
+              <span className="muted">  # {lang === "ru" ? item.descriptionRu : item.descriptionEn}</span>
             </p>
           ))}
         </div>
@@ -78,10 +79,10 @@ export function HomePage() {
         <div className="log">
           {education.map((item) => (
             <p className="log-line" key={item.id}>
-              <span className="ts">[{item.institution}]</span>{" "}
-              <span className="cmd">{t.executing}</span> {item.specialty}
+              <span className="ts">[{lang === "ru" ? item.institutionRu : item.institutionEn}]</span>{" "}
+              <span className="cmd">{t.executing}</span> {lang === "ru" ? item.specialtyRu : item.specialtyEn}
               {"\n"}
-              <span className="muted">  # {item.details}</span>
+              <span className="muted">  # {lang === "ru" ? item.detailsRu : item.detailsEn}</span>
             </p>
           ))}
         </div>

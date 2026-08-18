@@ -19,18 +19,25 @@ export interface Project {
 
 export interface Skill {
   id: string;
-  title: string;
-  category: string;
+  titleEn: string;
+  titleRu: string;
+  categoryEn: string;
+  categoryRu: string;
   experienceYears: number;
-  proficiencyLevel: string;
-  description: string;
+  proficiencyLevelEn: string;
+  proficiencyLevelRu: string;
+  descriptionEn: string;
+  descriptionRu: string;
 }
 
 export interface Experience {
   id: string;
-  companyOrProject: string;
-  role: string;
-  description: string;
+  companyOrProjectEn: string;
+  companyOrProjectRu: string;
+  roleEn: string;
+  roleRu: string;
+  descriptionEn: string;
+  descriptionRu: string;
   period: string;
 }
 
@@ -54,7 +61,10 @@ export interface Profile {
 
 export interface Education {
   id: string;
-  institution: string;
-  specialty: string;
-  details: string;
+  institutionEn: string;
+  institutionRu: string;
+  specialtyEn: string;
+  specialtyRu: string;
+  detailsEn: string;
+  detailsRu: string;
 }
