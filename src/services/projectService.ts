@@ -14,6 +14,7 @@ export interface ProjectDto {
   title: string;
   description: string;
   images: string[];
+  videos: string[];
   tagsLinks: TagLinkDto[];
   youtubeUrl: string;
   youtubeEmbed: string | null;
@@ -25,6 +26,7 @@ function toDto(row: {
   title: string;
   description: string;
   images: string;
+  videos: string;
   tagsLinks: string;
   youtubeUrl: string;
   createdAt: Date;
@@ -34,6 +36,7 @@ function toDto(row: {
     title: row.title,
     description: row.description,
     images: parseJsonArray<string>(row.images),
+    videos: parseJsonArray<string>(row.videos),
     tagsLinks: parseJsonArray<TagLinkDto>(row.tagsLinks),
     youtubeUrl: row.youtubeUrl,
     youtubeEmbed: youtubeEmbedSrc(row.youtubeUrl),
@@ -57,6 +60,7 @@ export async function createProject(input: ProjectInput): Promise<ProjectDto> {
       title: input.title,
       description: input.description,
       images: toJson(input.images),
+      videos: toJson(input.videos),
       tagsLinks: toJson(input.tagsLinks),
       youtubeUrl: input.youtubeUrl,
     },
@@ -64,14 +68,19 @@ export async function createProject(input: ProjectInput): Promise<ProjectDto> {
   return toDto(row);
 }
 
+function removedPaths(previous: string[], next: string[]): string[] {
+  return previous.filter((item) => !next.includes(item));
+}
+
 export async function updateProject(id: string, input: Partial<ProjectInput>): Promise<ProjectDto | null> {
   const existing = await prisma.project.findUnique({ where: { id } });
   if (!existing) return null;
 
   if (input.images) {
-    const previous = parseJsonArray<string>(existing.images);
-    const removed = previous.filter((item) => !input.images!.includes(item));
-    deleteStoredFiles(removed);
+    deleteStoredFiles(removedPaths(parseJsonArray<string>(existing.images), input.images));
+  }
+  if (input.videos) {
+    deleteStoredFiles(removedPaths(parseJsonArray<string>(existing.videos), input.videos));
   }
 
   const row = await prisma.project.update({
@@ -80,6 +89,7 @@ export async function updateProject(id: string, input: Partial<ProjectInput>): P
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.images !== undefined ? { images: toJson(input.images) } : {}),
+      ...(input.videos !== undefined ? { videos: toJson(input.videos) } : {}),
       ...(input.tagsLinks !== undefined ? { tagsLinks: toJson(input.tagsLinks) } : {}),
       ...(input.youtubeUrl !== undefined ? { youtubeUrl: input.youtubeUrl } : {}),
     },
@@ -90,7 +100,10 @@ export async function updateProject(id: string, input: Partial<ProjectInput>): P
 export async function deleteProject(id: string): Promise<boolean> {
   const existing = await prisma.project.findUnique({ where: { id } });
   if (!existing) return false;
-  deleteStoredFiles(parseJsonArray<string>(existing.images));
+  deleteStoredFiles([
+    ...parseJsonArray<string>(existing.images),
+    ...parseJsonArray<string>(existing.videos),
+  ]);
   await prisma.project.delete({ where: { id } });
   return true;
 }

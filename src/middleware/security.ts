@@ -18,6 +18,7 @@ export function applySecurity(app: Express): void {
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
           imgSrc: ["'self'", "data:", "blob:"],
+          mediaSrc: ["'self'"],
           frameSrc: ["https://www.youtube.com", "https://www.youtube-nocookie.com"],
           connectSrc: ["'self'"],
           objectSrc: ["'none'"],

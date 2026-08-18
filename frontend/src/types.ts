@@ -8,6 +8,7 @@ export interface Project {
   title: string;
   description: string;
   images: string[];
+  videos: string[];
   tagsLinks: TagLink[];
   youtubeUrl: string;
   youtubeEmbed: string | null;

@@ -9,7 +9,14 @@ const ALLOWED_MIME: Record<string, string> = {
   "image/png": ".png",
   "image/webp": ".webp",
   "image/gif": ".gif",
+  "video/mp4": ".mp4",
+  "video/webm": ".webm",
+  "video/ogg": ".ogv",
+  "video/quicktime": ".mov",
 };
+
+export const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+export const VIDEO_MIMES = new Set(["video/mp4", "video/webm", "video/ogg", "video/quicktime"]);
 
 export const upload = multer({
   storage: multer.diskStorage({
@@ -23,7 +30,7 @@ export const upload = multer({
       cb(null, `${crypto.randomBytes(16).toString("hex")}${ext}`);
     },
   }),
-  limits: { fileSize: config.uploadMaxBytes, files: 8 },
+  limits: { fileSize: config.uploadMaxBytes, files: 12 },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED_MIME[file.mimetype]) {
       cb(new Error("Unsupported file type"));
@@ -58,8 +65,8 @@ export function deleteStoredFiles(paths: string[]): void {
   }
 }
 
-export async function saveBufferAsImage(buffer: Buffer, mimeHint = "image/jpeg"): Promise<string> {
-  const ext = ALLOWED_MIME[mimeHint] ?? ".jpg";
+export async function saveBufferAsUpload(buffer: Buffer, mimeHint = "image/jpeg"): Promise<string> {
+  const ext = ALLOWED_MIME[mimeHint] ?? (mimeHint.startsWith("video/") ? ".mp4" : ".jpg");
   const filename = `${crypto.randomBytes(16).toString("hex")}${ext}`;
   const absolute = path.join(config.uploadDir, filename);
   await fs.promises.writeFile(absolute, buffer);

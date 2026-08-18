@@ -45,28 +45,34 @@ async function prompt(question: string): Promise<string> {
   }
 }
 
+function copyLocalFiles(raw: string, label: string): string[] {
+  if (!raw) return [];
+  const stored: string[] = [];
+  for (const chunk of raw.split(",")) {
+    const source = chunk.trim();
+    if (!source) continue;
+    const absolute = path.isAbsolute(source) ? source : path.resolve(source);
+    if (!fs.existsSync(absolute)) {
+      throw new Error(`${label} not found: ${absolute}`);
+    }
+    const filename = `${Date.now()}-${path.basename(absolute).replace(/[^A-Za-z0-9._-]/g, "")}`;
+    const dest = path.join(config.uploadDir, filename);
+    fs.copyFileSync(absolute, dest);
+    stored.push(publicUploadPath(filename));
+  }
+  return stored;
+}
+
 async function addProjectInteractive(): Promise<void> {
   const title = await prompt("Title: ");
   const description = await prompt("Description: ");
   const youtubeUrl = await prompt("YouTube URL (blank to skip): ");
   const tagsRaw = await prompt("Tag links Label|url, Label|url (blank to skip): ");
   const imagesRaw = await prompt("Image paths (comma-separated host or container paths): ");
+  const videosRaw = await prompt("Video paths mp4/webm (comma-separated, blank to skip): ");
 
-  const images: string[] = [];
-  if (imagesRaw) {
-    for (const raw of imagesRaw.split(",")) {
-      const source = raw.trim();
-      if (!source) continue;
-      const absolute = path.isAbsolute(source) ? source : path.resolve(source);
-      if (!fs.existsSync(absolute)) {
-        throw new Error(`Image not found: ${absolute}`);
-      }
-      const filename = `${Date.now()}-${path.basename(absolute).replace(/[^A-Za-z0-9._-]/g, "")}`;
-      const dest = path.join(config.uploadDir, filename);
-      fs.copyFileSync(absolute, dest);
-      images.push(publicUploadPath(filename));
-    }
-  }
+  const images = copyLocalFiles(imagesRaw, "Image");
+  const videos = copyLocalFiles(videosRaw, "Video");
 
   const tagsLinks = tagsRaw
     ? tagsRaw.split(",").map((chunk) => {
@@ -76,7 +82,7 @@ async function addProjectInteractive(): Promise<void> {
     : [];
 
   const created = await createProject(
-    projectInputSchema.parse({ title, description, youtubeUrl, images, tagsLinks })
+    projectInputSchema.parse({ title, description, youtubeUrl, images, videos, tagsLinks })
   );
   console.log(`Created project ${created.id}`);
 }

@@ -232,7 +232,7 @@ adminRouter.delete("/education/:id", validateParams(idParamSchema), async (req, 
   }
 });
 
-adminRouter.post("/upload", upload.array("files", 8), (req, res) => {
+adminRouter.post("/upload", upload.array("files", 12), (req, res) => {
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
   res.status(201).json({
     paths: files.map((file) => publicUploadPath(file.filename)),

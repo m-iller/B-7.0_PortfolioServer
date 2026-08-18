@@ -11,25 +11,17 @@ export function SkillGrid({ skills }: { skills: Skill[] }) {
     <>
       {Object.entries(groups).map(([category, items]) => (
         <div className="skill-group" key={category}>
-          <h3>$ ls skills/{category}/</h3>
-          <div className="skill-grid">
+          <h3>{category}</h3>
+          <div className="skill-list">
             {items.map((skill) => (
-              <div className="skill" key={skill.id} tabIndex={0}>
-                <strong>{skill.title}</strong>
-                <span className="hint">hover</span>
-                <div className="tooltip">
-                  +--------------------------------+
-                  <br />
-                  | {skill.title}
-                  <br />
-                  | years: {skill.experienceYears}
-                  <br />
-                  | level: {skill.proficiencyLevel}
-                  <br />
-                  | {skill.description}
-                  <br />
-                  +--------------------------------+
+              <div className="skill" key={skill.id}>
+                <div className="skill-head">
+                  <strong>{skill.title}</strong>
+                  <span className="skill-meta">
+                    {skill.experienceYears}y · {skill.proficiencyLevel}
+                  </span>
                 </div>
+                <p className="skill-desc">{skill.description}</p>
               </div>
             ))}
           </div>

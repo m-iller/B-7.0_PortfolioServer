@@ -55,6 +55,7 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     description: "",
     youtubeUrl: "",
     images: [] as string[],
+    videos: [] as string[],
     tagsLinks: [] as TagLink[],
   };
   const [items, setItems] = useState<Project[]>([]);
@@ -71,10 +72,10 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     reload().catch((err: Error) => onStatus(err.message));
   }, [onStatus]);
 
-  async function onUpload(files: FileList | null) {
+  async function onUpload(files: FileList | null, kind: "images" | "videos") {
     if (!files?.length) return;
     const paths = await apiUpload(files);
-    setForm((prev) => ({ ...prev, images: [...prev.images, ...paths] }));
+    setForm((prev) => ({ ...prev, [kind]: [...prev[kind], ...paths] }));
   }
 
   async function onSubmit(event: FormEvent) {
@@ -108,9 +109,24 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
         </label>
         <label>
           images
-          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={(e) => onUpload(e.target.files)} />
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            multiple
+            onChange={(e) => onUpload(e.target.files, "images")}
+          />
         </label>
         <p className="muted">{form.images.join(" ")}</p>
+        <label>
+          videos
+          <input
+            type="file"
+            accept="video/mp4,video/webm,video/ogg,video/quicktime"
+            multiple
+            onChange={(e) => onUpload(e.target.files, "videos")}
+          />
+        </label>
+        <p className="muted">{form.videos.join(" ")}</p>
         <div className="row">
           <input placeholder="tag label" value={tagLabel} onChange={(e) => setTagLabel(e.target.value)} />
           <input placeholder="https://..." value={tagUrl} onChange={(e) => setTagUrl(e.target.value)} />
@@ -167,6 +183,7 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
                       description: item.description,
                       youtubeUrl: item.youtubeUrl,
                       images: item.images,
+                      videos: item.videos ?? [],
                       tagsLinks: item.tagsLinks,
                     });
                   }}

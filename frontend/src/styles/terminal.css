@@ -39,7 +39,7 @@ a:hover {
 }
 
 .shell {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 24px 16px 64px;
 }
@@ -148,10 +148,31 @@ a:hover {
   margin: 14px 0;
 }
 
+.gallery-item {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: #000;
+  cursor: zoom-in;
+}
+
+.gallery-item:hover {
+  border-color: var(--accent);
+}
+
 .gallery img {
+  display: block;
   width: 100%;
   height: 160px;
   object-fit: cover;
+}
+
+.local-video {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  margin: 12px 0;
   border: 1px solid var(--border);
   background: #000;
 }
@@ -161,6 +182,7 @@ a:hover {
   width: 100%;
   padding-top: 56.25%;
   border: 1px solid var(--border);
+  margin-top: 12px;
 }
 
 .video iframe {
@@ -171,67 +193,99 @@ a:hover {
   border: 0;
 }
 
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px 32px;
+}
+
+.lightbox img {
+  max-width: 96vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border: 1px solid var(--accent);
+}
+
+.lightbox-close,
+.lightbox-nav {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: #0e0e0e;
+  color: var(--accent);
+  font-family: inherit;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+
+.lightbox-close {
+  top: 12px;
+  right: 12px;
+}
+
+.lightbox-prev {
+  left: 12px;
+}
+
+.lightbox-next {
+  right: 12px;
+}
+
+.lightbox-count {
+  position: absolute;
+  bottom: 10px;
+  color: var(--muted);
+  margin: 0;
+  font-size: 12px;
+}
+
 .skill-group {
   margin-bottom: 22px;
 }
 
 .skill-group h3 {
   color: var(--amber);
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 700;
   margin: 0 0 10px;
 }
 
-.skill-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+.skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .skill {
-  position: relative;
-  min-height: 150px;
+  width: 100%;
   border: 1px solid var(--border);
   background: #0e0e0e;
-  padding: 12px;
+  padding: 12px 16px;
+}
+
+.skill-head {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: baseline;
 }
 
 .skill strong {
   color: var(--accent);
 }
 
-.skill .hint {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
+.skill-meta {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 
-.tooltip {
-  display: none;
-  position: absolute;
-  z-index: 5;
-  left: 8px;
-  right: 8px;
-  top: 8px;
-  bottom: 8px;
-  background: #050505;
-  border: 1px solid var(--accent);
-  padding: 8px;
-  overflow: auto;
-  text-align: left;
-  font-size: 12px;
-  color: var(--text);
-  white-space: pre-wrap;
-}
-
-.skill:hover .tooltip,
-.skill:focus-within .tooltip {
-  display: block;
+.skill-desc {
+  margin: 8px 0 0;
 }
 
 .log {
@@ -326,5 +380,11 @@ a:hover {
 @media (max-width: 700px) {
   .gallery img {
     height: 140px;
+  }
+
+  .lightbox-prev,
+  .lightbox-next {
+    bottom: 40px;
+    top: auto;
   }
 }

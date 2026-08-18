@@ -12,6 +12,7 @@ model Project {
   title       String
   description String
   images      String
+  videos      String   @default("[]")
   tagsLinks   String
   youtubeUrl  String   @default("")
   createdAt   DateTime @default(now())

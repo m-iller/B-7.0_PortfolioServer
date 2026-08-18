@@ -22,7 +22,7 @@ Open [http://localhost:3000](http://localhost:3000). Admin login: `/login` using
 Volumes:
 
 - `./data` → SQLite file
-- `./uploads` → project images
+- `./uploads` → project images and videos
 
 ## Environment
 
@@ -34,7 +34,7 @@ Volumes:
 | `TELEGRAM_ADMIN_ID` | only this Telegram user can write |
 | `COOKIE_SECURE` | `true` behind HTTPS |
 | `PUBLIC_ORIGIN` | public site URL |
-| `UPLOAD_MAX_MB` | image size cap |
+| `UPLOAD_MAX_MB` | image/video size cap (default 64) |
 
 ## CLI
 
@@ -47,7 +47,7 @@ docker exec -it portfolio_backend cli list-projects
 docker exec -it portfolio_backend cli list-skills
 ```
 
-`add-project` is interactive: title, description, YouTube URL, tag links (`Label|https://...`), image paths.
+`add-project` is interactive: title, description, YouTube URL, tag links (`Label|https://...`), image paths, video paths.
 
 ## Telegram bot
 
@@ -55,7 +55,7 @@ docker exec -it portfolio_backend cli list-skills
 2. Set `TELEGRAM_ADMIN_ID` to your numeric user id.
 3. Restart compose. In chat: `/newproject`.
 
-Flow: title → description → photos (album or one-by-one, then `/done`) → YouTube URL or `skip` → `Label|url, Label|url` or `skip`.
+Flow: title → description → photos (`/done`) → videos (`/done` or `skip`) → YouTube URL or `skip` → `Label|url, Label|url` or `skip`.
 
 Other commands: `/help`, `/cancel`.
 
@@ -80,7 +80,8 @@ Frontend hot reload: `npm run dev:web` and `npm --prefix frontend run dev` (Vite
 - All writes go through Prisma. No string-concatenated SQL.
 - Public text is sanitized on input. React escapes on render. No `dangerouslySetInnerHTML`.
 - YouTube embeds accept only validated `youtube.com` / `youtu.be` IDs.
-- Uploads: jpeg/png/webp/gif only, random filenames, path-traversal checks. SVG is rejected for user uploads (XSS).
+- Uploads: jpeg/png/webp/gif and mp4/webm/ogg/mov. Random filenames, path-traversal checks. SVG is rejected (XSS).
+- Project photos open fullscreen (Esc / click backdrop). Local videos play with native controls.
 - Admin routes require a valid session cookie **and** a matching `X-CSRF-Token`.
 - Login is rate-limited.
 

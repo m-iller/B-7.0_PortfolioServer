@@ -5,7 +5,7 @@ Step-by-step guide for running this portfolio server on a local PC or a VDS. The
 | Path | Contents |
 | --- | --- |
 | `./data` | SQLite database (`portfolio.db`) |
-| `./uploads` | Project images |
+| `./uploads` | Project images and videos |
 
 ---
 
@@ -77,7 +77,7 @@ Edit `.env` before the first public deploy. At minimum change these:
 | `COOKIE_SECURE` | Yes on HTTPS | Set `true` when the site is served over TLS |
 | `TELEGRAM_BOT_TOKEN` | No | Leave empty to idle the bot container |
 | `TELEGRAM_ADMIN_ID` | If bot is used | Numeric Telegram user id. Only this user can write |
-| `UPLOAD_MAX_MB` | No | Default `8` |
+| `UPLOAD_MAX_MB` | No | Default `64`. Raise this if you upload large videos |
 | `PORT` | No | Default `3000` (must match the compose port mapping) |
 
 `DATABASE_URL` in `.env` is for local (non-Docker) runs. Docker Compose always overrides it to `file:/app/data/portfolio.db`.
@@ -171,8 +171,8 @@ Moving from a PC to a VDS: copy the repo plus the `data/` and `uploads/` folders
 
 The home page is a single terminal-style landing with four sections:
 
-- **Projects** — title and tag-links at the top, then description, up to 3 images, optional YouTube embed
-- **Skills** — squares grouped by category. Hover (or focus) a square for years, proficiency, and description
+- **Projects** — title and tag-links at the top, then description, photo gallery (click a photo for fullscreen), local videos, optional YouTube embed
+- **Skills** — full-width rows grouped under a category name. Years, proficiency, and description are always visible
 - **Experience** — terminal log lines
 - **Education** — terminal log lines
 
@@ -187,12 +187,13 @@ The dashboard has four tabs. Each tab can create, edit, and delete records.
 **Projects**
 
 - Title, description, optional YouTube URL
-- Image upload (jpeg / png / webp / gif only)
+- Image upload (jpeg / png / webp / gif)
+- Video upload (mp4 / webm / ogg / mov)
 - Tag-links: label + `https://...` URL (GitHub, Printables, docs, …)
 
 **Skills**
 
-- Title, category (Mechanics / Electronics / Programming, or any custom folder name)
+- Title, category name (Mechanics / Electronics / Programming, or any custom name)
 - Years of experience, proficiency, description
 
 **Experience**
@@ -237,6 +238,7 @@ The prompt asks for:
 3. YouTube URL (blank to skip)
 4. Tag links as `Label|https://url, Label|https://url` (blank to skip)
 5. Image paths, comma-separated (host or container paths that the container can read)
+6. Video paths, comma-separated (mp4/webm, blank to skip)
 
 Equivalent via npm (note the `--`):
 
@@ -276,18 +278,21 @@ If `TELEGRAM_BOT_TOKEN` is empty, the bot container stays idle and does not cras
 | `/start` | Short help |
 | `/help` | Wizard steps |
 | `/newproject` | Start a new project |
-| `/done` | Finish the photo step |
+| `/done` | Finish the photo or video step |
 | `/cancel` | Abort the current wizard |
 
 ### `/newproject` flow
 
 1. **Title** — send as text
 2. **Description** — send as text
-3. **Photos** — send one-by-one or as an album. Type `/done` when finished (photos are optional; `/done` with zero photos is allowed)
-4. **YouTube** — full watch/share URL, or `skip`
-5. **Links** — `GitHub|https://github.com/you/repo, Printables|https://www.printables.com/...` or `skip`
+3. **Photos** — send one-by-one or as an album. Type `/done` when finished (photos are optional)
+4. **Videos** — send mp4 videos or a video document. Type `/done` or `skip` when finished
+5. **YouTube** — full watch/share URL, or `skip`
+6. **Links** — `GitHub|https://github.com/you/repo, Printables|https://www.printables.com/...` or `skip`
 
-On success the bot downloads photos into `/uploads`, writes the project to SQLite, and replies with the new title and id.
+On success the bot downloads media into `/uploads`, writes the project to SQLite, and replies with the new title and id.
+
+Telegram Bot API usually caps downloads around 20 MB. For larger files use `/admin` or the CLI.
 
 ---
 

@@ -48,6 +48,7 @@ async function seed(): Promise<void> {
           description:
             "Seed project demonstrating the terminal card layout: title and tag-links on top, description in the body, a local image gallery, and an embedded YouTube player.",
           images: toJson([alpha1, alpha2, alpha3]),
+          videos: toJson([]),
           tagsLinks: toJson([
             { label: "GitHub", url: "https://github.com/" },
             { label: "Printables", url: "https://www.printables.com/" },
@@ -59,6 +60,7 @@ async function seed(): Promise<void> {
           description:
             "Second seed project. Replace this record from /admin, the Telegram bot, or the CLI. Images live in the mounted /uploads volume.",
           images: toJson([beta1, beta2]),
+          videos: toJson([]),
           tagsLinks: toJson([{ label: "GitHub", url: "https://github.com/" }]),
           youtubeUrl: "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
         },
@@ -67,6 +69,7 @@ async function seed(): Promise<void> {
           description:
             "Third seed project without a YouTube embed so the gallery-only layout can be reviewed.",
           images: toJson([gamma1, gamma2, gamma3]),
+          videos: toJson([]),
           tagsLinks: toJson([
             { label: "Docs", url: "https://developer.mozilla.org/" },
             { label: "GitHub", url: "https://github.com/" },

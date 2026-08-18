@@ -25,7 +25,7 @@ if (isProduction && jwtSecret.length < 32) {
   throw new Error("JWT_SECRET must be at least 32 characters in production");
 }
 
-const uploadMaxMb = Number(optional("UPLOAD_MAX_MB", "8"));
+const uploadMaxMb = Number(optional("UPLOAD_MAX_MB", "64"));
 const dataDir = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.resolve(process.cwd(), "data");

@@ -23,6 +23,7 @@ export const projectInputSchema = z.object({
   title: nonEmpty(160),
   description: nonEmpty(8000),
   images: z.array(z.string().min(1).max(512)).max(8).default([]),
+  videos: z.array(z.string().min(1).max(512)).max(8).default([]),
   tagsLinks: z.array(tagLinkSchema).max(12).default([]),
   youtubeUrl: z
     .string()
