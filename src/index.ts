@@ -9,10 +9,12 @@ import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
 import { publicRouter } from "./routes/public.js";
 import { ensureAdmin } from "./services/adminService.js";
+import { startMediaCleanupScheduler } from "./services/mediaCleanup.js";
 
 async function main(): Promise<void> {
   await configureSqlite();
   await ensureAdmin();
+  startMediaCleanupScheduler();
 
   const app = express();
   applySecurity(app);

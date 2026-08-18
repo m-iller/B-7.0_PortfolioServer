@@ -15,6 +15,7 @@ import { createEducation } from "./services/educationService.js";
 import { createExperience } from "./services/experienceService.js";
 import { createProject, listProjects } from "./services/projectService.js";
 import { createProfileItem, getProfile, updateProfile } from "./services/profileService.js";
+import { cleanupUnusedMedia } from "./services/mediaCleanup.js";
 import { createSkill, listSkills } from "./services/skillService.js";
 import { publicUploadPath } from "./services/uploadService.js";
 import { config } from "./config.js";
@@ -36,6 +37,7 @@ Usage:
   cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
   cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
   cli add-contact --label-en Discord --label-ru Discord --value nickname#0000
+  cli cleanup-media [--force]
   cli list-projects
   cli list-skills
 `);
@@ -172,6 +174,13 @@ async function main(): Promise<void> {
         })
       );
       console.log(`Created contact ${created.id}`);
+      break;
+    }
+    case "cleanup-media": {
+      const result = await cleanupUnusedMedia({ ignoreGrace: process.argv.includes("--force") });
+      console.log(
+        `scanned ${result.scanned}, deleted ${result.deleted}, kept referenced ${result.skippedReferenced}, kept fresh ${result.skippedFresh}, freed ${result.bytesFreed} bytes`
+      );
       break;
     }
     case "list-projects":

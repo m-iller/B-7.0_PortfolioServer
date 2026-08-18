@@ -2,6 +2,7 @@ import { prisma } from "../db.js";
 import type { ProjectInput } from "../schemas/index.js";
 import { parseJsonArray, toJson } from "../utils/json.js";
 import { youtubeEmbedSrc } from "../utils/sanitize.js";
+import { cleanupUnusedMedia } from "./mediaCleanup.js";
 import { deleteStoredFiles } from "./uploadService.js";
 
 export interface TagLinkDto {
@@ -131,6 +132,7 @@ export async function updateProject(id: string, input: Partial<ProjectInput>): P
       ...(input.youtubeUrl !== undefined ? { youtubeUrl: input.youtubeUrl } : {}),
     },
   });
+  void cleanupUnusedMedia().catch(() => undefined);
   return toDto(row);
 }
 
@@ -142,6 +144,7 @@ export async function deleteProject(id: string): Promise<boolean> {
     ...parseJsonArray<string>(existing.videos),
   ]);
   await prisma.project.delete({ where: { id } });
+  void cleanupUnusedMedia().catch(() => undefined);
   return true;
 }
 

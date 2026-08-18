@@ -54,6 +54,8 @@ export const config = {
   telegramAdminId: optional("TELEGRAM_ADMIN_ID"),
   uploadMaxMb,
   uploadMaxBytes: Math.max(1, uploadMaxMb) * 1024 * 1024,
+  mediaCleanupGraceMin: Math.max(1, Number(optional("MEDIA_CLEANUP_GRACE_MIN", "30"))),
+  mediaCleanupIntervalMin: Math.max(5, Number(optional("MEDIA_CLEANUP_INTERVAL_MIN", "60"))),
   dataDir,
   uploadDir,
   frontendDir: path.resolve(process.cwd(), "frontend", "dist"),

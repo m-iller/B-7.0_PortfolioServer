@@ -78,6 +78,8 @@ Edit `.env` before the first public deploy. At minimum change these:
 | `TELEGRAM_BOT_TOKEN` | No | Leave empty to idle the bot container |
 | `TELEGRAM_ADMIN_ID` | If bot is used | Numeric Telegram user id. Only this user can write |
 | `UPLOAD_MAX_MB` | No | Default `64`. Raise this if you upload large videos |
+| `MEDIA_CLEANUP_GRACE_MIN` | No | Default `30`. New unused uploads are kept this many minutes so an unsaved admin form can still attach them |
+| `MEDIA_CLEANUP_INTERVAL_MIN` | No | Default `60`. Web container sweep interval |
 | `PORT` | No | Default `3000` (must match the compose port mapping) |
 
 `DATABASE_URL` in `.env` is for local (non-Docker) runs. Docker Compose always overrides it to `file:/app/data/portfolio.db`.
@@ -236,6 +238,8 @@ docker exec -it portfolio_backend cli add-contact --label-en GitHub --label-ru G
 docker exec -it portfolio_backend cli add-contact --label-en Discord --label-ru Discord --value nickname#0000
 docker exec -it portfolio_backend cli list-projects
 docker exec -it portfolio_backend cli list-skills
+docker exec -it portfolio_backend cli cleanup-media
+docker exec -it portfolio_backend cli cleanup-media --force
 ```
 
 ### Interactive project
