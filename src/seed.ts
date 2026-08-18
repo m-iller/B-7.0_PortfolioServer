@@ -3,6 +3,7 @@ import path from "node:path";
 import { config } from "./config.js";
 import { configureSqlite, prisma } from "./db.js";
 import { ensureAdmin } from "./services/adminService.js";
+import { migrateProjectTranslations } from "./services/projectService.js";
 import { toJson } from "./utils/json.js";
 
 function placeholderSvg(title: string, accent: string): string {
@@ -29,6 +30,7 @@ function writePlaceholder(filename: string, title: string, accent: string): stri
 async function seed(): Promise<void> {
   await configureSqlite();
   await ensureAdmin();
+  await migrateProjectTranslations();
 
   const projectCount = await prisma.project.count();
   if (projectCount === 0) {
@@ -45,8 +47,14 @@ async function seed(): Promise<void> {
       data: [
         {
           title: "Template Project Alpha",
+          titleEn: "Template Project Alpha",
+          titleRu: "Шаблонный проект Альфа",
           description:
             "Seed project demonstrating the terminal card layout: title and tag-links on top, description in the body, a local image gallery, and an embedded YouTube player.",
+          descriptionEn:
+            "Seed project demonstrating the terminal card layout: title and tag-links on top, description in the body, a local image gallery, and an embedded YouTube player.",
+          descriptionRu:
+            "Демонстрационный проект: заголовок и теги-ссылки сверху, описание, галерея локальных фото и встроенный плеер YouTube.",
           images: toJson([alpha1, alpha2, alpha3]),
           videos: toJson([]),
           tagsLinks: toJson([
@@ -57,8 +65,14 @@ async function seed(): Promise<void> {
         },
         {
           title: "Template Project Beta",
+          titleEn: "Template Project Beta",
+          titleRu: "Шаблонный проект Бета",
           description:
             "Second seed project. Replace this record from /admin, the Telegram bot, or the CLI. Images live in the mounted /uploads volume.",
+          descriptionEn:
+            "Second seed project. Replace this record from /admin, the Telegram bot, or the CLI. Images live in the mounted /uploads volume.",
+          descriptionRu:
+            "Второй демонстрационный проект. Замените запись в /admin, через Telegram-бота или CLI. Файлы лежат в томе /uploads.",
           images: toJson([beta1, beta2]),
           videos: toJson([]),
           tagsLinks: toJson([{ label: "GitHub", url: "https://github.com/" }]),
@@ -66,8 +80,14 @@ async function seed(): Promise<void> {
         },
         {
           title: "Template Project Gamma",
+          titleEn: "Template Project Gamma",
+          titleRu: "Шаблонный проект Гамма",
           description:
             "Third seed project without a YouTube embed so the gallery-only layout can be reviewed.",
+          descriptionEn:
+            "Third seed project without a YouTube embed so the gallery-only layout can be reviewed.",
+          descriptionRu:
+            "Третий демонстрационный проект без YouTube — только галерея фото.",
           images: toJson([gamma1, gamma2, gamma3]),
           videos: toJson([]),
           tagsLinks: toJson([
@@ -79,6 +99,30 @@ async function seed(): Promise<void> {
       ],
     });
   }
+
+  await prisma.project.updateMany({
+    where: { titleEn: "Template Project Alpha" },
+    data: {
+      titleRu: "Шаблонный проект Альфа",
+      descriptionRu:
+        "Демонстрационный проект: заголовок и теги-ссылки сверху, описание, галерея локальных фото и встроенный плеер YouTube.",
+    },
+  });
+  await prisma.project.updateMany({
+    where: { titleEn: "Template Project Beta" },
+    data: {
+      titleRu: "Шаблонный проект Бета",
+      descriptionRu:
+        "Второй демонстрационный проект. Замените запись в /admin, через Telegram-бота или CLI. Файлы лежат в томе /uploads.",
+    },
+  });
+  await prisma.project.updateMany({
+    where: { titleEn: "Template Project Gamma" },
+    data: {
+      titleRu: "Шаблонный проект Гамма",
+      descriptionRu: "Третий демонстрационный проект без YouTube — только галерея фото.",
+    },
+  });
 
   if ((await prisma.skill.count()) === 0) {
     await prisma.skill.createMany({

@@ -17,7 +17,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Admin login: `/login` using `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
+Open [http://localhost:3000](http://localhost:3000). Use `[ EN ]` / `[ RU ]` on the main page to switch language. Admin login: `/login` using `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Projects require both English and Russian title and description.
 
 Volumes:
 
@@ -47,7 +47,7 @@ docker exec -it portfolio_backend cli list-projects
 docker exec -it portfolio_backend cli list-skills
 ```
 
-`add-project` is interactive: title, description, YouTube URL, tag links (`Label|https://...`), image paths, video paths.
+`add-project` is interactive: title EN, title RU, description EN, description RU, YouTube URL, tag links (`Label|https://...`), image paths, video paths.
 
 ## Telegram bot
 
@@ -55,7 +55,7 @@ docker exec -it portfolio_backend cli list-skills
 2. Set `TELEGRAM_ADMIN_ID` to your numeric user id.
 3. Restart compose. In chat: `/newproject`.
 
-Flow: title → description → photos (`/done`) → videos (`/done` or `skip`) → YouTube URL or `skip` → `Label|url, Label|url` or `skip`.
+Flow: title EN → title RU → description EN → description RU → photos (`/done`) → videos (`/done` or `skip`) → YouTube URL or `skip` → `Label|url, Label|url` or `skip`.
 
 Other commands: `/help`, `/cancel`.
 

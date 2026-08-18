@@ -171,7 +171,8 @@ Moving from a PC to a VDS: copy the repo plus the `data/` and `uploads/` folders
 
 The home page is a single terminal-style landing with four sections:
 
-- **Projects** — title and tag-links at the top, then description, photo gallery (click a photo for fullscreen), local videos, optional YouTube embed
+- Language toggle `[ EN ]` / `[ RU ]` in the top bar (saved in the browser)
+- **Projects** — bilingual title and description (both required). Tag-links, photo gallery (click for fullscreen), local videos, optional YouTube embed. The toggle switches the shown language.
 - **Skills** — full-width rows grouped under a category name. Years, proficiency, and description are always visible
 - **Experience** — terminal log lines
 - **Education** — terminal log lines
@@ -186,7 +187,9 @@ The dashboard has four tabs. Each tab can create, edit, and delete records.
 
 **Projects**
 
-- Title, description, optional YouTube URL
+- Title EN + title RU (both required)
+- Description EN + description RU (both required)
+- Optional YouTube URL
 - Image upload (jpeg / png / webp / gif)
 - Video upload (mp4 / webm / ogg / mov)
 - Tag-links: label + `https://...` URL (GitHub, Printables, docs, …)
@@ -233,12 +236,14 @@ docker exec -it portfolio_backend cli add-project
 
 The prompt asks for:
 
-1. Title
-2. Description
-3. YouTube URL (blank to skip)
-4. Tag links as `Label|https://url, Label|https://url` (blank to skip)
-5. Image paths, comma-separated (host or container paths that the container can read)
-6. Video paths, comma-separated (mp4/webm, blank to skip)
+1. Title EN
+2. Title RU
+3. Description EN
+4. Description RU
+5. YouTube URL (blank to skip)
+6. Tag links as `Label|https://url, Label|https://url` (blank to skip)
+7. Image paths, comma-separated (host or container paths that the container can read)
+8. Video paths, comma-separated (mp4/webm, blank to skip)
 
 Equivalent via npm (note the `--`):
 
@@ -283,12 +288,14 @@ If `TELEGRAM_BOT_TOKEN` is empty, the bot container stays idle and does not cras
 
 ### `/newproject` flow
 
-1. **Title** — send as text
-2. **Description** — send as text
-3. **Photos** — send one-by-one or as an album. Type `/done` when finished (photos are optional)
-4. **Videos** — send mp4 videos or a video document. Type `/done` or `skip` when finished
-5. **YouTube** — full watch/share URL, or `skip`
-6. **Links** — `GitHub|https://github.com/you/repo, Printables|https://www.printables.com/...` or `skip`
+1. **Title EN**
+2. **Title RU**
+3. **Description EN**
+4. **Description RU**
+5. **Photos** — send one-by-one or as an album. Type `/done` when finished (photos are optional)
+6. **Videos** — send mp4 videos or a video document. Type `/done` or `skip` when finished
+7. **YouTube** — full watch/share URL, or `skip`
+8. **Links** — `GitHub|https://github.com/you/repo, Printables|https://www.printables.com/...` or `skip`
 
 On success the bot downloads media into `/uploads`, writes the project to SQLite, and replies with the new title and id.
 

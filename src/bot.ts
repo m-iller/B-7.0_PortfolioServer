@@ -5,12 +5,23 @@ import { projectInputSchema, tagLinkSchema } from "./schemas/index.js";
 import { createProject } from "./services/projectService.js";
 import { saveBufferAsUpload } from "./services/uploadService.js";
 
-type WizardStep = "idle" | "title" | "description" | "photos" | "videos" | "youtube" | "links";
+type WizardStep =
+  | "idle"
+  | "titleEn"
+  | "titleRu"
+  | "descriptionEn"
+  | "descriptionRu"
+  | "photos"
+  | "videos"
+  | "youtube"
+  | "links";
 
 interface Session {
   step: WizardStep;
-  title?: string;
-  description?: string;
+  titleEn?: string;
+  titleRu?: string;
+  descriptionEn?: string;
+  descriptionRu?: string;
   images: string[];
   videos: string[];
   youtubeUrl: string;
@@ -95,12 +106,14 @@ async function main(): Promise<void> {
     await ctx.reply(
       [
         "/newproject flow:",
-        "1. Title",
-        "2. Description",
-        "3. Photos (album or one-by-one). Send /done when finished.",
-        "4. Videos (mp4). Send /done or skip when finished.",
-        "5. YouTube URL or skip",
-        "6. Links as Label|https://url, Label|https://url or skip",
+        "1. Title EN",
+        "2. Title RU",
+        "3. Description EN",
+        "4. Description RU",
+        "5. Photos (album or one-by-one). Send /done when finished.",
+        "6. Videos (mp4). Send /done or skip when finished.",
+        "7. YouTube URL or skip",
+        "8. Links as Label|https://url, Label|https://url or skip",
       ].join("\n")
     );
   });
@@ -112,25 +125,27 @@ async function main(): Promise<void> {
 
   bot.command("newproject", async (ctx) => {
     const session = getSession(ctx.from!.id);
-    session.step = "title";
+    session.step = "titleEn";
     session.images = [];
     session.videos = [];
     session.youtubeUrl = "";
-    session.title = undefined;
-    session.description = undefined;
-    await ctx.reply("Step 1/6 — send the project title.");
+    session.titleEn = undefined;
+    session.titleRu = undefined;
+    session.descriptionEn = undefined;
+    session.descriptionRu = undefined;
+    await ctx.reply("Step 1/8 — send the English title.");
   });
 
   bot.command("done", async (ctx) => {
     const session = getSession(ctx.from!.id);
     if (session.step === "photos") {
       session.step = "videos";
-      await ctx.reply("Step 4/6 — send videos (mp4), or type skip / /done.");
+      await ctx.reply("Step 6/8 — send videos (mp4), or type skip / /done.");
       return;
     }
     if (session.step === "videos") {
       session.step = "youtube";
-      await ctx.reply("Step 5/6 — send a YouTube URL, or type skip.");
+      await ctx.reply("Step 7/8 — send a YouTube URL, or type skip.");
       return;
     }
     await ctx.reply("Nothing to finish. Use /newproject.");
@@ -185,38 +200,54 @@ async function main(): Promise<void> {
 
     const session = getSession(ctx.from!.id);
 
-    if (session.step === "title") {
-      session.title = text;
-      session.step = "description";
-      await ctx.reply("Step 2/6 — send the project description.");
+    if (session.step === "titleEn") {
+      session.titleEn = text;
+      session.step = "titleRu";
+      await ctx.reply("Step 2/8 — send the Russian title.");
       return;
     }
 
-    if (session.step === "description") {
-      session.description = text;
+    if (session.step === "titleRu") {
+      session.titleRu = text;
+      session.step = "descriptionEn";
+      await ctx.reply("Step 3/8 — send the English description.");
+      return;
+    }
+
+    if (session.step === "descriptionEn") {
+      session.descriptionEn = text;
+      session.step = "descriptionRu";
+      await ctx.reply("Step 4/8 — send the Russian description.");
+      return;
+    }
+
+    if (session.step === "descriptionRu") {
+      session.descriptionRu = text;
       session.step = "photos";
-      await ctx.reply("Step 3/6 — send photos (bulk allowed). Type /done when finished.");
+      await ctx.reply("Step 5/8 — send photos (bulk allowed). Type /done when finished.");
       return;
     }
 
     if (session.step === "videos" && text.toLowerCase() === "skip") {
       session.step = "youtube";
-      await ctx.reply("Step 5/6 — send a YouTube URL, or type skip.");
+      await ctx.reply("Step 7/8 — send a YouTube URL, or type skip.");
       return;
     }
 
     if (session.step === "youtube") {
       session.youtubeUrl = text.toLowerCase() === "skip" ? "" : text;
       session.step = "links";
-      await ctx.reply("Step 6/6 — send links as Label|url, Label|url or type skip.");
+      await ctx.reply("Step 8/8 — send links as Label|url, Label|url or type skip.");
       return;
     }
 
     if (session.step === "links") {
       try {
         const payload = projectInputSchema.parse({
-          title: session.title,
-          description: session.description,
+          titleEn: session.titleEn,
+          titleRu: session.titleRu,
+          descriptionEn: session.descriptionEn,
+          descriptionRu: session.descriptionRu,
           images: session.images,
           videos: session.videos,
           tagsLinks: parseTagLinks(text),
@@ -224,7 +255,7 @@ async function main(): Promise<void> {
         });
         const created = await createProject(payload);
         resetSession(ctx.from!.id);
-        await ctx.reply(`Project saved: ${created.title} (${created.id})`);
+        await ctx.reply(`Project saved: ${created.titleEn} / ${created.titleRu} (${created.id})`);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Validation failed";
         await ctx.reply(`Rejected: ${message}. Fix the last step or /cancel.`);

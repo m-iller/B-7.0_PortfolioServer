@@ -64,8 +64,10 @@ function copyLocalFiles(raw: string, label: string): string[] {
 }
 
 async function addProjectInteractive(): Promise<void> {
-  const title = await prompt("Title: ");
-  const description = await prompt("Description: ");
+  const titleEn = await prompt("Title EN: ");
+  const titleRu = await prompt("Title RU: ");
+  const descriptionEn = await prompt("Description EN: ");
+  const descriptionRu = await prompt("Description RU: ");
   const youtubeUrl = await prompt("YouTube URL (blank to skip): ");
   const tagsRaw = await prompt("Tag links Label|url, Label|url (blank to skip): ");
   const imagesRaw = await prompt("Image paths (comma-separated host or container paths): ");
@@ -82,7 +84,16 @@ async function addProjectInteractive(): Promise<void> {
     : [];
 
   const created = await createProject(
-    projectInputSchema.parse({ title, description, youtubeUrl, images, videos, tagsLinks })
+    projectInputSchema.parse({
+      titleEn,
+      titleRu,
+      descriptionEn,
+      descriptionRu,
+      youtubeUrl,
+      images,
+      videos,
+      tagsLinks,
+    })
   );
   console.log(`Created project ${created.id}`);
 }
@@ -133,7 +144,7 @@ async function main(): Promise<void> {
       break;
     case "list-projects":
       for (const project of await listProjects()) {
-        console.log(`${project.id}\t${project.title}`);
+        console.log(`${project.id}\t${project.titleEn} / ${project.titleRu}`);
       }
       break;
     case "list-skills":

@@ -1,13 +1,17 @@
 import { useState } from "react";
+import { useLang } from "../i18n";
 import type { Project } from "../types";
 import { Lightbox } from "./Lightbox";
 
 export function ProjectCard({ project }: { project: Project }) {
+  const { lang } = useLang();
   const [lightbox, setLightbox] = useState<number | null>(null);
+  const title = lang === "ru" ? project.titleRu : project.titleEn;
+  const description = lang === "ru" ? project.descriptionRu : project.descriptionEn;
 
   return (
     <article className="project">
-      <h3>{project.title}</h3>
+      <h3>{title}</h3>
       <div className="tags">
         {project.tagsLinks.map((tag) => (
           <a key={`${tag.label}-${tag.url}`} className="tag" href={tag.url} target="_blank" rel="noreferrer noopener">
@@ -15,7 +19,7 @@ export function ProjectCard({ project }: { project: Project }) {
           </a>
         ))}
       </div>
-      <p>{project.description}</p>
+      <p>{description}</p>
       {project.images.length > 0 && (
         <div className="gallery">
           {project.images.map((src, index) => (
@@ -32,7 +36,7 @@ export function ProjectCard({ project }: { project: Project }) {
         <div className="video">
           <iframe
             src={project.youtubeEmbed}
-            title={`${project.title} video`}
+            title={`${title} video`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
             sandbox="allow-scripts allow-same-origin allow-presentation"

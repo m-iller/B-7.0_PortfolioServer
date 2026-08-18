@@ -5,8 +5,10 @@ export interface TagLink {
 
 export interface Project {
   id: string;
-  title: string;
-  description: string;
+  titleEn: string;
+  titleRu: string;
+  descriptionEn: string;
+  descriptionRu: string;
   images: string[];
   videos: string[];
   tagsLinks: TagLink[];

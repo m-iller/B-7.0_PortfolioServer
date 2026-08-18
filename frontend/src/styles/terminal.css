@@ -64,6 +64,13 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+}
+
+.lang-toggle {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 4px;
 }
 
 .nav a,

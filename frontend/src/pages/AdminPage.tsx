@@ -51,8 +51,10 @@ export function AdminPage() {
 
 function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
   const empty = {
-    title: "",
-    description: "",
+    titleEn: "",
+    titleRu: "",
+    descriptionEn: "",
+    descriptionRu: "",
     youtubeUrl: "",
     images: [] as string[],
     videos: [] as string[],
@@ -96,12 +98,28 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     <>
       <form className="form" onSubmit={onSubmit}>
         <label>
-          title
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          title EN
+          <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} required />
         </label>
         <label>
-          description
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+          title RU
+          <input value={form.titleRu} onChange={(e) => setForm({ ...form, titleRu: e.target.value })} required />
+        </label>
+        <label>
+          description EN
+          <textarea
+            value={form.descriptionEn}
+            onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
+            required
+          />
+        </label>
+        <label>
+          description RU
+          <textarea
+            value={form.descriptionRu}
+            onChange={(e) => setForm({ ...form, descriptionRu: e.target.value })}
+            required
+          />
         </label>
         <label>
           youtube_url
@@ -165,22 +183,26 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
       <table className="table">
         <thead>
           <tr>
-            <th>title</th>
+            <th>title EN / RU</th>
             <th>actions</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id}>
-              <td>{item.title}</td>
+              <td>
+                {item.titleEn} / {item.titleRu}
+              </td>
               <td className="row">
                 <button
                   className="btn"
                   onClick={() => {
                     setEditing(item.id);
                     setForm({
-                      title: item.title,
-                      description: item.description,
+                      titleEn: item.titleEn,
+                      titleRu: item.titleRu,
+                      descriptionEn: item.descriptionEn,
+                      descriptionRu: item.descriptionRu,
                       youtubeUrl: item.youtubeUrl,
                       images: item.images,
                       videos: item.videos ?? [],
