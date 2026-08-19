@@ -8,6 +8,8 @@ export function applySecurity(app: Express): void {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
 
+  const httpsOrigin = config.publicOrigin.startsWith("https://");
+
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -25,9 +27,12 @@ export function applySecurity(app: Express): void {
           baseUri: ["'self'"],
           formAction: ["'self'"],
           frameAncestors: ["'none'"],
-          upgradeInsecureRequests: config.isProduction ? [] : null,
+          // Only force HTTPS when PUBLIC_ORIGIN is already https. Otherwise
+          // browsers upgrade JS/CSS to https and the page stays blank on HTTP.
+          upgradeInsecureRequests: httpsOrigin ? [] : null,
         },
       },
+      hsts: httpsOrigin,
       crossOriginEmbedderPolicy: false,
       referrerPolicy: { policy: "no-referrer" },
     })
