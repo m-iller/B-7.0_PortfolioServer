@@ -85,5 +85,5 @@ export function toYoutubeEmbedUrl(input: string): string {
 
 export function youtubeEmbedSrc(youtubeUrl: string): string | null {
   const id = extractYoutubeId(youtubeUrl);
-  return id ? `https://www.youtube.com/embed/${id}` : null;
+  return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
 }

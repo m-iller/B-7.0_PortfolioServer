@@ -34,7 +34,8 @@ export function applySecurity(app: Express): void {
       },
       hsts: httpsOrigin,
       crossOriginEmbedderPolicy: false,
-      referrerPolicy: { policy: "no-referrer" },
+      // YouTube embeds return Error 153 if the parent sends no Referer.
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     })
   );
 

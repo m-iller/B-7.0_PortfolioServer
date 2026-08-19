@@ -35,11 +35,11 @@ export function ProjectCard({ project }: { project: Project }) {
       {project.youtubeEmbed && (
         <div className="video">
           <iframe
-            src={project.youtubeEmbed}
+            src={`${project.youtubeEmbed}?rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`}
             title={`${title} video`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
-            sandbox="allow-scripts allow-same-origin allow-presentation"
           />
         </div>
       )}
