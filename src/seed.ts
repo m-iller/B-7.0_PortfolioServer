@@ -31,6 +31,29 @@ function writePlaceholder(filename: string, title: string, accent: string): stri
   return `/uploads/${filename}`;
 }
 
+const BOOTSTRAP_MARKER = path.join(config.dataDir, ".bootstrapped");
+
+function markBootstrapped(): void {
+  fs.mkdirSync(config.dataDir, { recursive: true });
+  if (!fs.existsSync(BOOTSTRAP_MARKER)) {
+    fs.writeFileSync(BOOTSTRAP_MARKER, `${new Date().toISOString()}\n`, "utf8");
+  }
+}
+
+async function alreadyHasUserData(): Promise<boolean> {
+  const [profile, folders, contacts, projects, skills, experience, education] = await Promise.all([
+    prisma.profile.findUnique({ where: { id: "main" } }),
+    prisma.projectFolder.count(),
+    prisma.profileItem.count(),
+    prisma.project.count(),
+    prisma.skill.count(),
+    prisma.experience.count(),
+    prisma.education.count(),
+  ]);
+  const customName = Boolean(profile && profile.nameEn && profile.nameEn !== "Your Name");
+  return customName || folders > 0 || contacts > 0 || projects > 0 || skills > 0 || experience > 0 || education > 0;
+}
+
 async function seed(): Promise<void> {
   await configureSqlite();
   await ensureAdmin();
@@ -39,6 +62,12 @@ async function seed(): Promise<void> {
   await migrateSkillTranslations();
   await migrateExperienceTranslations();
   await migrateEducationTranslations();
+
+  if (fs.existsSync(BOOTSTRAP_MARKER) || (await alreadyHasUserData())) {
+    markBootstrapped();
+    console.log("[seed] skip dummy data — existing content is preserved");
+    return;
+  }
 
   const projectCount = await prisma.project.count();
   if (projectCount === 0) {
@@ -107,30 +136,6 @@ async function seed(): Promise<void> {
       ],
     });
   }
-
-  await prisma.project.updateMany({
-    where: { titleEn: "Template Project Alpha" },
-    data: {
-      titleRu: "Шаблонный проект Альфа",
-      descriptionRu:
-        "Демонстрационный проект: заголовок и теги-ссылки сверху, описание, галерея локальных фото и встроенный плеер YouTube.",
-    },
-  });
-  await prisma.project.updateMany({
-    where: { titleEn: "Template Project Beta" },
-    data: {
-      titleRu: "Шаблонный проект Бета",
-      descriptionRu:
-        "Второй демонстрационный проект. Замените запись в /admin, через Telegram-бота или CLI. Файлы лежат в томе /uploads.",
-    },
-  });
-  await prisma.project.updateMany({
-    where: { titleEn: "Template Project Gamma" },
-    data: {
-      titleRu: "Шаблонный проект Гамма",
-      descriptionRu: "Третий демонстрационный проект без YouTube — только галерея фото.",
-    },
-  });
 
   if ((await prisma.projectFolder.count()) === 0) {
     const folder = await prisma.projectFolder.create({
@@ -338,6 +343,7 @@ async function seed(): Promise<void> {
     });
   }
 
+  markBootstrapped();
   console.log("[seed] ready");
 }
 

@@ -13,4 +13,9 @@ export async function configureSqlite(): Promise<void> {
   await prisma.$queryRawUnsafe("PRAGMA busy_timeout=5000;");
   await prisma.$queryRawUnsafe("PRAGMA foreign_keys=ON;");
   await prisma.$queryRawUnsafe("PRAGMA synchronous=NORMAL;");
+  const files = await prisma.$queryRawUnsafe<Array<{ file: string }>>("PRAGMA database_list;");
+  const main = files.find((row) => row.file) ?? files[0];
+  if (main?.file) {
+    console.log(`[db] sqlite file ${main.file}`);
+  }
 }
