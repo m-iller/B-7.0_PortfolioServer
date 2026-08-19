@@ -26,6 +26,11 @@ export const tagLinkSchema = z.object({
     .transform((value) => sanitizeUrl(value)),
 });
 
+const optionalFolderId = z
+  .union([z.string().trim().max(64), z.null()])
+  .optional()
+  .transform((value) => (value ? value : null));
+
 export const projectInputSchema = z.object({
   titleEn: nonEmpty(160),
   titleRu: nonEmpty(160),
@@ -41,9 +46,18 @@ export const projectInputSchema = z.object({
     .optional()
     .default("")
     .transform((value) => (value ? toYoutubeEmbedUrl(value) : "")),
+  folderId: optionalFolderId,
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+
+export const folderInputSchema = z.object({
+  titleEn: nonEmpty(160),
+  titleRu: nonEmpty(160),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
 });
 
 export const projectUpdateSchema = projectInputSchema.partial();
+export const folderUpdateSchema = folderInputSchema.partial();
 
 export const skillInputSchema = z.object({
   titleEn: nonEmpty(120),
@@ -117,6 +131,7 @@ export const idParamSchema = z.object({
 });
 
 export type ProjectInput = z.infer<typeof projectInputSchema>;
+export type FolderInput = z.infer<typeof folderInputSchema>;
 export type SkillInput = z.infer<typeof skillInputSchema>;
 export type ExperienceInput = z.infer<typeof experienceInputSchema>;
 export type EducationInput = z.infer<typeof educationInputSchema>;

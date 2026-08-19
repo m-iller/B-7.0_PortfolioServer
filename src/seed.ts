@@ -132,6 +132,20 @@ async function seed(): Promise<void> {
     },
   });
 
+  if ((await prisma.projectFolder.count()) === 0) {
+    const folder = await prisma.projectFolder.create({
+      data: {
+        titleEn: "Hardware Lab",
+        titleRu: "Железная лаборатория",
+        sortOrder: 1,
+      },
+    });
+    await prisma.project.updateMany({
+      where: { titleEn: { in: ["Template Project Alpha", "Template Project Beta"] } },
+      data: { folderId: folder.id },
+    });
+  }
+
   if ((await prisma.skill.count()) === 0) {
     await prisma.skill.createMany({
       data: [

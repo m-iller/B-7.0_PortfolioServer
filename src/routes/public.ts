@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { listEducation } from "../services/educationService.js";
 import { listExperience } from "../services/experienceService.js";
+import { listFolders } from "../services/folderService.js";
 import { getProject, listProjects } from "../services/projectService.js";
 import { getProfile } from "../services/profileService.js";
 import { listSkills } from "../services/skillService.js";
@@ -14,6 +15,14 @@ publicRouter.get("/health", (_req, res) => {
 publicRouter.get("/profile", async (_req, res, next) => {
   try {
     res.json(await getProfile());
+  } catch (error) {
+    next(error);
+  }
+});
+
+publicRouter.get("/folders", async (_req, res, next) => {
+  try {
+    res.json(await listFolders());
   } catch (error) {
     next(error);
   }

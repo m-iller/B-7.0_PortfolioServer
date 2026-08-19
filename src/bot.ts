@@ -1,7 +1,8 @@
 import { Telegraf } from "telegraf";
 import { config } from "./config.js";
 import { configureSqlite, prisma } from "./db.js";
-import { projectInputSchema, tagLinkSchema } from "./schemas/index.js";
+import { projectInputSchema, tagLinkSchema, type TagLink } from "./schemas/index.js";
+import { listFolders } from "./services/folderService.js";
 import { createProject } from "./services/projectService.js";
 import { saveBufferAsUpload } from "./services/uploadService.js";
 
@@ -14,7 +15,8 @@ type WizardStep =
   | "photos"
   | "videos"
   | "youtube"
-  | "links";
+  | "links"
+  | "folder";
 
 interface Session {
   step: WizardStep;
@@ -25,6 +27,7 @@ interface Session {
   images: string[];
   videos: string[];
   youtubeUrl: string;
+  tagsLinks: TagLink[];
 }
 
 const sessions = new Map<number, Session>();
@@ -35,7 +38,7 @@ function isAdmin(userId: number | undefined): boolean {
 }
 
 function emptySession(): Session {
-  return { step: "idle", images: [], videos: [], youtubeUrl: "" };
+  return { step: "idle", images: [], videos: [], youtubeUrl: "", tagsLinks: [] };
 }
 
 function getSession(userId: number): Session {
@@ -56,6 +59,33 @@ function parseTagLinks(raw: string) {
     const [label, url] = chunk.split("|").map((part) => part.trim());
     return tagLinkSchema.parse({ label, url });
   });
+}
+
+async function saveWizardProject(
+  userId: number,
+  session: Session,
+  folderId: string | null,
+  reply: (text: string) => Promise<unknown>
+): Promise<void> {
+  try {
+    const payload = projectInputSchema.parse({
+      titleEn: session.titleEn,
+      titleRu: session.titleRu,
+      descriptionEn: session.descriptionEn,
+      descriptionRu: session.descriptionRu,
+      images: session.images,
+      videos: session.videos,
+      tagsLinks: session.tagsLinks,
+      youtubeUrl: session.youtubeUrl,
+      folderId,
+    });
+    const created = await createProject(payload);
+    resetSession(userId);
+    await reply(`Project saved: ${created.titleEn} / ${created.titleRu} (${created.id})`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Validation failed";
+    await reply(`Rejected: ${message}. Fix the last step or /cancel.`);
+  }
 }
 
 async function downloadTelegramFile(bot: Telegraf, fileId: string, mimeFallback: string): Promise<string> {
@@ -96,8 +126,10 @@ async function main(): Promise<void> {
       [
         "Portfolio admin bot.",
         "/newproject — add a project",
+        "/folders — list project folders",
         "/cancel — abort the current wizard",
         "/help — this message",
+        "Edit profile, folders, projects, skills, experience, and education in /admin.",
       ].join("\n")
     );
   });
@@ -114,6 +146,9 @@ async function main(): Promise<void> {
         "6. Videos (mp4). Send /done or skip when finished.",
         "7. YouTube URL or skip",
         "8. Links as Label|https://url, Label|https://url or skip",
+        "9. Folder number from the list, or skip (no folder)",
+        "",
+        "Create folders and edit every section in the /admin panel.",
       ].join("\n")
     );
   });
@@ -123,29 +158,41 @@ async function main(): Promise<void> {
     await ctx.reply("Wizard cancelled.");
   });
 
+  bot.command("folders", async (ctx) => {
+    const folders = await listFolders();
+    if (folders.length === 0) {
+      await ctx.reply("No folders yet. Create them in /admin.");
+      return;
+    }
+    await ctx.reply(
+      folders.map((folder) => `${folder.titleEn} / ${folder.titleRu} (${folder.projectCount} projects)`).join("\n")
+    );
+  });
+
   bot.command("newproject", async (ctx) => {
     const session = getSession(ctx.from!.id);
     session.step = "titleEn";
     session.images = [];
     session.videos = [];
     session.youtubeUrl = "";
+    session.tagsLinks = [];
     session.titleEn = undefined;
     session.titleRu = undefined;
     session.descriptionEn = undefined;
     session.descriptionRu = undefined;
-    await ctx.reply("Step 1/8 — send the English title.");
+    await ctx.reply("Step 1/9 — send the English title.");
   });
 
   bot.command("done", async (ctx) => {
     const session = getSession(ctx.from!.id);
     if (session.step === "photos") {
       session.step = "videos";
-      await ctx.reply("Step 6/8 — send videos (mp4), or type skip / /done.");
+      await ctx.reply("Step 6/9 — send videos (mp4), or type skip / /done.");
       return;
     }
     if (session.step === "videos") {
       session.step = "youtube";
-      await ctx.reply("Step 7/8 — send a YouTube URL, or type skip.");
+      await ctx.reply("Step 7/9 — send a YouTube URL, or type skip.");
       return;
     }
     await ctx.reply("Nothing to finish. Use /newproject.");
@@ -203,67 +250,83 @@ async function main(): Promise<void> {
     if (session.step === "titleEn") {
       session.titleEn = text;
       session.step = "titleRu";
-      await ctx.reply("Step 2/8 — send the Russian title.");
+      await ctx.reply("Step 2/9 — send the Russian title.");
       return;
     }
 
     if (session.step === "titleRu") {
       session.titleRu = text;
       session.step = "descriptionEn";
-      await ctx.reply("Step 3/8 — send the English description.");
+      await ctx.reply("Step 3/9 — send the English description.");
       return;
     }
 
     if (session.step === "descriptionEn") {
       session.descriptionEn = text;
       session.step = "descriptionRu";
-      await ctx.reply("Step 4/8 — send the Russian description.");
+      await ctx.reply("Step 4/9 — send the Russian description.");
       return;
     }
 
     if (session.step === "descriptionRu") {
       session.descriptionRu = text;
       session.step = "photos";
-      await ctx.reply("Step 5/8 — send photos (bulk allowed). Type /done when finished.");
+      await ctx.reply("Step 5/9 — send photos (bulk allowed). Type /done when finished.");
       return;
     }
 
     if (session.step === "videos" && text.toLowerCase() === "skip") {
       session.step = "youtube";
-      await ctx.reply("Step 7/8 — send a YouTube URL, or type skip.");
+      await ctx.reply("Step 7/9 — send a YouTube URL, or type skip.");
       return;
     }
 
     if (session.step === "youtube") {
       session.youtubeUrl = text.toLowerCase() === "skip" ? "" : text;
       session.step = "links";
-      await ctx.reply("Step 8/8 — send links as Label|url, Label|url or type skip.");
+      await ctx.reply("Step 8/9 — send links as Label|url, Label|url or type skip.");
       return;
     }
 
     if (session.step === "links") {
       try {
-        const payload = projectInputSchema.parse({
-          titleEn: session.titleEn,
-          titleRu: session.titleRu,
-          descriptionEn: session.descriptionEn,
-          descriptionRu: session.descriptionRu,
-          images: session.images,
-          videos: session.videos,
-          tagsLinks: parseTagLinks(text),
-          youtubeUrl: session.youtubeUrl,
-        });
-        const created = await createProject(payload);
-        resetSession(ctx.from!.id);
-        await ctx.reply(`Project saved: ${created.titleEn} / ${created.titleRu} (${created.id})`);
+        session.tagsLinks = parseTagLinks(text);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Validation failed";
         await ctx.reply(`Rejected: ${message}. Fix the last step or /cancel.`);
+        return;
       }
+      const folders = await listFolders();
+      if (folders.length === 0) {
+        await saveWizardProject(ctx.from!.id, session, null, ctx.reply.bind(ctx));
+        return;
+      }
+      session.step = "folder";
+      await ctx.reply(
+        [
+          "Step 9/9 — send a folder number, or type skip:",
+          ...folders.map((folder, index) => `${index + 1}. ${folder.titleEn} / ${folder.titleRu}`),
+        ].join("\n")
+      );
       return;
     }
 
-    await ctx.reply("Use /newproject to add a record.");
+    if (session.step === "folder") {
+      let folderId: string | null = null;
+      if (text.toLowerCase() !== "skip") {
+        const folders = await listFolders();
+        const picked = folders[Number(text) - 1];
+        if (!picked) {
+          await ctx.reply("Unknown folder. Send a number from the list or skip.");
+          return;
+        }
+        folderId = picked.id;
+      }
+      await saveWizardProject(ctx.from!.id, session, folderId, ctx.reply.bind(ctx));
+      return;
+    }
+
+    await ctx.reply("Use /newproject to add a record. Edit everything in /admin.");
   });
 
   await bot.launch();

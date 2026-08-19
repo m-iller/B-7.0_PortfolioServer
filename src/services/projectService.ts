@@ -2,6 +2,7 @@ import { prisma } from "../db.js";
 import type { ProjectInput } from "../schemas/index.js";
 import { parseJsonArray, toJson } from "../utils/json.js";
 import { youtubeEmbedSrc } from "../utils/sanitize.js";
+import { assertFolderId } from "./folderService.js";
 import { cleanupUnusedMedia } from "./mediaCleanup.js";
 import { deleteStoredFiles } from "./uploadService.js";
 
@@ -21,6 +22,8 @@ export interface ProjectDto {
   tagsLinks: TagLinkDto[];
   youtubeUrl: string;
   youtubeEmbed: string | null;
+  folderId: string | null;
+  sortOrder: number;
   createdAt: string;
 }
 
@@ -36,6 +39,8 @@ function toDto(row: {
   videos: string;
   tagsLinks: string;
   youtubeUrl: string;
+  folderId: string | null;
+  sortOrder: number;
   createdAt: Date;
 }): ProjectDto {
   return {
@@ -49,6 +54,8 @@ function toDto(row: {
     tagsLinks: parseJsonArray<TagLinkDto>(row.tagsLinks),
     youtubeUrl: row.youtubeUrl,
     youtubeEmbed: youtubeEmbedSrc(row.youtubeUrl),
+    folderId: row.folderId,
+    sortOrder: row.sortOrder,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -65,7 +72,9 @@ function bilingualWrite(input: Pick<ProjectInput, "titleEn" | "titleRu" | "descr
 }
 
 export async function listProjects(): Promise<ProjectDto[]> {
-  const rows = await prisma.project.findMany({ orderBy: { createdAt: "desc" } });
+  const rows = await prisma.project.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+  });
   return rows.map(toDto);
 }
 
@@ -75,6 +84,7 @@ export async function getProject(id: string): Promise<ProjectDto | null> {
 }
 
 export async function createProject(input: ProjectInput): Promise<ProjectDto> {
+  const folderId = await assertFolderId(input.folderId);
   const row = await prisma.project.create({
     data: {
       ...bilingualWrite(input),
@@ -82,6 +92,8 @@ export async function createProject(input: ProjectInput): Promise<ProjectDto> {
       videos: toJson(input.videos),
       tagsLinks: toJson(input.tagsLinks),
       youtubeUrl: input.youtubeUrl,
+      folderId,
+      sortOrder: input.sortOrder,
     },
   });
   return toDto(row);
@@ -122,6 +134,8 @@ export async function updateProject(id: string, input: Partial<ProjectInput>): P
           ...(input.descriptionRu !== undefined ? { descriptionRu: input.descriptionRu } : {}),
         };
 
+  const folderId = input.folderId !== undefined ? await assertFolderId(input.folderId) : undefined;
+
   const row = await prisma.project.update({
     where: { id },
     data: {
@@ -130,6 +144,8 @@ export async function updateProject(id: string, input: Partial<ProjectInput>): P
       ...(input.videos !== undefined ? { videos: toJson(input.videos) } : {}),
       ...(input.tagsLinks !== undefined ? { tagsLinks: toJson(input.tagsLinks) } : {}),
       ...(input.youtubeUrl !== undefined ? { youtubeUrl: input.youtubeUrl } : {}),
+      ...(folderId !== undefined ? { folderId } : {}),
+      ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
     },
   });
   void cleanupUnusedMedia().catch(() => undefined);

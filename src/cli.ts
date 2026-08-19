@@ -8,11 +8,13 @@ import {
   experienceInputSchema,
   profileInputSchema,
   profileItemInputSchema,
+  folderInputSchema,
   projectInputSchema,
   skillInputSchema,
 } from "./schemas/index.js";
 import { createEducation } from "./services/educationService.js";
 import { createExperience } from "./services/experienceService.js";
+import { createFolder, listFolders } from "./services/folderService.js";
 import { createProject, listProjects } from "./services/projectService.js";
 import { createProfileItem, getProfile, updateProfile } from "./services/profileService.js";
 import { cleanupUnusedMedia } from "./services/mediaCleanup.js";
@@ -34,11 +36,13 @@ Usage:
   cli add-experience --company-en "Lab" --company-ru "Лаборатория" --role-en "Engineer" --role-ru "Инженер" --period "2020-2024" --desc-en "Work log" --desc-ru "Журнал работ"
   cli add-education --institution-en "University" --institution-ru "Университет" --specialty-en "ME" --specialty-ru "Механика" --details-en "Degree notes" --details-ru "Заметки"
   cli add-project
+  cli add-folder --name-en "Hardware Lab" --name-ru "Железная лаборатория" [--sort 1]
   cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
   cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
   cli add-contact --label-en Discord --label-ru Discord --value nickname#0000
   cli cleanup-media [--force]
   cli list-projects
+  cli list-folders
   cli list-skills
 `);
   process.exit(1);
@@ -80,6 +84,14 @@ async function addProjectInteractive(): Promise<void> {
   const tagsRaw = await prompt("Tag links Label|url, Label|url (blank to skip): ");
   const imagesRaw = await prompt("Image paths (comma-separated host or container paths): ");
   const videosRaw = await prompt("Video paths mp4/webm (comma-separated, blank to skip): ");
+  const folders = await listFolders();
+  if (folders.length > 0) {
+    console.log("Folders:");
+    folders.forEach((folder, index) => {
+      console.log(`  ${index + 1}. ${folder.titleEn} / ${folder.titleRu}`);
+    });
+  }
+  const folderRaw = await prompt("Folder number (blank = no folder): ");
 
   const images = copyLocalFiles(imagesRaw, "Image");
   const videos = copyLocalFiles(videosRaw, "Video");
@@ -101,6 +113,7 @@ async function addProjectInteractive(): Promise<void> {
       images,
       videos,
       tagsLinks,
+      folderId: folderRaw ? folders[Number(folderRaw) - 1]?.id ?? null : null,
     })
   );
   console.log(`Created project ${created.id}`);
@@ -160,6 +173,17 @@ async function main(): Promise<void> {
     case "add-project":
       await addProjectInteractive();
       break;
+    case "add-folder": {
+      const created = await createFolder(
+        folderInputSchema.parse({
+          titleEn: arg("--name-en"),
+          titleRu: arg("--name-ru"),
+          sortOrder: Number(arg("--sort", "0")),
+        })
+      );
+      console.log(`Created folder ${created.id}`);
+      break;
+    }
     case "set-profile": {
       const current = await getProfile();
       const updated = await updateProfile(
@@ -195,7 +219,12 @@ async function main(): Promise<void> {
     }
     case "list-projects":
       for (const project of await listProjects()) {
-        console.log(`${project.id}\t${project.titleEn} / ${project.titleRu}`);
+        console.log(`${project.id}\t${project.folderId ?? "-"}\t${project.titleEn} / ${project.titleRu}`);
+      }
+      break;
+    case "list-folders":
+      for (const folder of await listFolders()) {
+        console.log(`${folder.id}\t${folder.projectCount}\t${folder.titleEn} / ${folder.titleRu}`);
       }
       break;
     case "list-skills":

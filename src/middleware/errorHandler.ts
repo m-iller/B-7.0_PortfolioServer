@@ -25,6 +25,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     "youtube_url must be a valid YouTube link",
     "Unsupported file type",
     "File too large",
+    "Folder not found",
   ]);
 
   if (safeClientErrors.has(message)) {

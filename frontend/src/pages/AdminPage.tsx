@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiGet, apiSend, apiUpload, ensureCsrf } from "../api";
-import type { Education, Experience, Profile, ProfileItem, Project, Skill, TagLink } from "../types";
+import type { Education, Experience, Profile, ProfileItem, Project, ProjectFolder, Skill, TagLink } from "../types";
 
 type Tab = "profile" | "projects" | "skills" | "experience" | "education";
 
@@ -10,6 +10,7 @@ export function AdminPage() {
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("projects");
   const [status, setStatus] = useState("");
+  const [projectTick, setProjectTick] = useState(0);
 
   useEffect(() => {
     ensureCsrf()
@@ -42,7 +43,12 @@ export function AdminPage() {
       </div>
       {status && <p className="status muted">{status}</p>}
       {tab === "profile" && <ProfileAdmin onStatus={setStatus} />}
-      {tab === "projects" && <ProjectAdmin onStatus={setStatus} />}
+      {tab === "projects" && (
+        <>
+          <FolderAdmin onStatus={setStatus} tick={projectTick} onChange={() => setProjectTick((n) => n + 1)} />
+          <ProjectAdmin onStatus={setStatus} tick={projectTick} onChange={() => setProjectTick((n) => n + 1)} />
+        </>
+      )}
       {tab === "skills" && <SkillAdmin onStatus={setStatus} />}
       {tab === "experience" && <ExperienceAdmin onStatus={setStatus} />}
       {tab === "education" && <EducationAdmin onStatus={setStatus} />}
@@ -220,7 +226,138 @@ function ProfileAdmin({ onStatus }: { onStatus: (value: string) => void }) {
   );
 }
 
-function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
+function FolderAdmin({
+  onStatus,
+  tick,
+  onChange,
+}: {
+  onStatus: (value: string) => void;
+  tick: number;
+  onChange: () => void;
+}) {
+  const empty = { titleEn: "", titleRu: "", sortOrder: 0 };
+  const [items, setItems] = useState<ProjectFolder[]>([]);
+  const [form, setForm] = useState(empty);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  async function reload() {
+    setItems(await apiGet<ProjectFolder[]>("/api/admin/folders"));
+  }
+
+  useEffect(() => {
+    reload().catch((err: Error) => onStatus(err.message));
+  }, [onStatus, tick]);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (editing) {
+      await apiSend(`/api/admin/folders/${editing}`, "PUT", form);
+      onStatus("folder updated");
+    } else {
+      await apiSend("/api/admin/folders", "POST", form);
+      onStatus("folder created");
+    }
+    setForm(empty);
+    setEditing(null);
+    onChange();
+  }
+
+  return (
+    <>
+      <p className="muted">folders (optional). deleting a folder leaves its projects ungrouped.</p>
+      <form className="form" onSubmit={onSubmit}>
+        <label>
+          folder title EN
+          <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} required />
+        </label>
+        <label>
+          folder title RU
+          <input value={form.titleRu} onChange={(e) => setForm({ ...form, titleRu: e.target.value })} required />
+        </label>
+        <label>
+          sort
+          <input
+            type="number"
+            min={0}
+            value={form.sortOrder}
+            onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
+          />
+        </label>
+        <div className="row">
+          <button className="btn btn-accent" type="submit">
+            [ {editing ? "update" : "create"} folder ]
+          </button>
+          {editing && (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setEditing(null);
+                setForm(empty);
+              }}
+            >
+              [ cancel ]
+            </button>
+          )}
+        </div>
+      </form>
+      <table className="table">
+        <thead>
+          <tr>
+            <th>folder EN / RU</th>
+            <th>projects</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id}>
+              <td>
+                {item.titleEn} / {item.titleRu}
+              </td>
+              <td>{item.projectCount}</td>
+              <td className="row">
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setEditing(item.id);
+                    setForm({
+                      titleEn: item.titleEn,
+                      titleRu: item.titleRu,
+                      sortOrder: item.sortOrder,
+                    });
+                  }}
+                >
+                  [ edit ]
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={async () => {
+                    await apiSend(`/api/admin/folders/${item.id}`, "DELETE");
+                    onStatus("folder deleted");
+                    onChange();
+                  }}
+                >
+                  [ delete ]
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+function ProjectAdmin({
+  onStatus,
+  tick,
+  onChange,
+}: {
+  onStatus: (value: string) => void;
+  tick: number;
+  onChange: () => void;
+}) {
   const empty = {
     titleEn: "",
     titleRu: "",
@@ -230,20 +367,28 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     images: [] as string[],
     videos: [] as string[],
     tagsLinks: [] as TagLink[],
+    folderId: "" as string,
+    sortOrder: 0,
   };
   const [items, setItems] = useState<Project[]>([]);
+  const [folders, setFolders] = useState<ProjectFolder[]>([]);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
   const [tagLabel, setTagLabel] = useState("");
   const [tagUrl, setTagUrl] = useState("");
 
   async function reload() {
-    setItems(await apiGet<Project[]>("/api/admin/projects"));
+    const [projects, nextFolders] = await Promise.all([
+      apiGet<Project[]>("/api/admin/projects"),
+      apiGet<ProjectFolder[]>("/api/admin/folders"),
+    ]);
+    setItems(projects);
+    setFolders(nextFolders);
   }
 
   useEffect(() => {
     reload().catch((err: Error) => onStatus(err.message));
-  }, [onStatus]);
+  }, [onStatus, tick]);
 
   async function onUpload(files: FileList | null, kind: "images" | "videos") {
     if (!files?.length) return;
@@ -251,23 +396,57 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
     setForm((prev) => ({ ...prev, [kind]: [...prev[kind], ...paths] }));
   }
 
+  function payload() {
+    return {
+      ...form,
+      folderId: form.folderId || null,
+    };
+  }
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (editing) {
-      await apiSend(`/api/admin/projects/${editing}`, "PUT", form);
+      await apiSend(`/api/admin/projects/${editing}`, "PUT", payload());
       onStatus("project updated");
     } else {
-      await apiSend("/api/admin/projects", "POST", form);
+      await apiSend("/api/admin/projects", "POST", payload());
       onStatus("project created");
     }
     setForm(empty);
     setEditing(null);
-    await reload();
+    onChange();
+  }
+
+  function folderLabel(folderId: string | null) {
+    if (!folderId) return "—";
+    const folder = folders.find((item) => item.id === folderId);
+    return folder ? `${folder.titleEn} / ${folder.titleRu}` : folderId;
   }
 
   return (
     <>
+      <p className="muted">projects: create and edit every section here (folder is optional).</p>
       <form className="form" onSubmit={onSubmit}>
+        <label>
+          folder (optional)
+          <select value={form.folderId} onChange={(e) => setForm({ ...form, folderId: e.target.value })}>
+            <option value="">no folder</option>
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id}>
+                {folder.titleEn} / {folder.titleRu}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          sort
+          <input
+            type="number"
+            min={0}
+            value={form.sortOrder}
+            onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
+          />
+        </label>
         <label>
           title EN
           <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} required />
@@ -305,7 +484,18 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
             onChange={(e) => onUpload(e.target.files, "images")}
           />
         </label>
-        <p className="muted">{form.images.join(" ")}</p>
+        {form.images.map((src) => (
+          <div className="media-item" key={src}>
+            <span className="muted">{src}</span>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setForm({ ...form, images: form.images.filter((item) => item !== src) })}
+            >
+              [ remove ]
+            </button>
+          </div>
+        ))}
         <label>
           videos
           <input
@@ -315,7 +505,18 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
             onChange={(e) => onUpload(e.target.files, "videos")}
           />
         </label>
-        <p className="muted">{form.videos.join(" ")}</p>
+        {form.videos.map((src) => (
+          <div className="media-item" key={src}>
+            <span className="muted">{src}</span>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setForm({ ...form, videos: form.videos.filter((item) => item !== src) })}
+            >
+              [ remove ]
+            </button>
+          </div>
+        ))}
         <div className="row">
           <input placeholder="tag label" value={tagLabel} onChange={(e) => setTagLabel(e.target.value)} />
           <input placeholder="https://..." value={tagUrl} onChange={(e) => setTagUrl(e.target.value)} />
@@ -332,7 +533,22 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
             [ add tag ]
           </button>
         </div>
-        <p className="muted">{form.tagsLinks.map((tag) => tag.label).join(", ")}</p>
+        {form.tagsLinks.map((tag, index) => (
+          <div className="media-item" key={`${tag.label}-${tag.url}-${index}`}>
+            <span className="muted">
+              {tag.label} · {tag.url}
+            </span>
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                setForm({ ...form, tagsLinks: form.tagsLinks.filter((_, itemIndex) => itemIndex !== index) })
+              }
+            >
+              [ remove ]
+            </button>
+          </div>
+        ))}
         <div className="row">
           <button className="btn btn-accent" type="submit">
             [ {editing ? "update" : "create"} project ]
@@ -355,6 +571,7 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
         <thead>
           <tr>
             <th>title EN / RU</th>
+            <th>folder</th>
             <th>actions</th>
           </tr>
         </thead>
@@ -364,6 +581,7 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
               <td>
                 {item.titleEn} / {item.titleRu}
               </td>
+              <td>{folderLabel(item.folderId)}</td>
               <td className="row">
                 <button
                   className="btn"
@@ -378,6 +596,8 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
                       images: item.images,
                       videos: item.videos ?? [],
                       tagsLinks: item.tagsLinks,
+                      folderId: item.folderId ?? "",
+                      sortOrder: item.sortOrder ?? 0,
                     });
                   }}
                 >
@@ -388,7 +608,7 @@ function ProjectAdmin({ onStatus }: { onStatus: (value: string) => void }) {
                   onClick={async () => {
                     await apiSend(`/api/admin/projects/${item.id}`, "DELETE");
                     onStatus("project deleted");
-                    await reload();
+                    onChange();
                   }}
                 >
                   [ delete ]

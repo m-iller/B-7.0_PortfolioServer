@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { ProfileCard } from "../components/ProfileCard";
-import { ProjectCard } from "../components/ProjectCard";
+import { ProjectBrowser } from "../components/ProjectBrowser";
 import { SkillGrid } from "../components/SkillGrid";
 import { apiGet } from "../api";
 import { useLang } from "../i18n";
-import type { Education, Experience, Profile, Project, Skill } from "../types";
+import type { Education, Experience, Profile, Project, ProjectFolder, Skill } from "../types";
 
 export function HomePage() {
   const { lang, t } = useLang();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [folders, setFolders] = useState<ProjectFolder[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [experience, setExperience] = useState<Experience[]>([]);
   const [education, setEducation] = useState<Education[]>([]);
@@ -19,13 +20,15 @@ export function HomePage() {
     Promise.all([
       apiGet<Profile>("/api/profile"),
       apiGet<Project[]>("/api/projects"),
+      apiGet<ProjectFolder[]>("/api/folders"),
       apiGet<Skill[]>("/api/skills"),
       apiGet<Experience[]>("/api/experience"),
       apiGet<Education[]>("/api/education"),
     ])
-      .then(([info, p, s, e, d]) => {
+      .then(([info, p, f, s, e, d]) => {
         setProfile(info);
         setProjects(p);
+        setFolders(f);
         setSkills(s);
         setExperience(e);
         setEducation(d);
@@ -46,9 +49,7 @@ export function HomePage() {
       <section className="section" id="projects">
         <h2>{t.projectsHead}</h2>
         <hr className="rule" />
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
+        <ProjectBrowser projects={projects} folders={folders} />
       </section>
 
       <section className="section" id="skills">

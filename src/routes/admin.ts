@@ -7,6 +7,8 @@ import {
   educationUpdateSchema,
   experienceInputSchema,
   experienceUpdateSchema,
+  folderInputSchema,
+  folderUpdateSchema,
   idParamSchema,
   profileInputSchema,
   profileItemInputSchema,
@@ -28,6 +30,12 @@ import {
   listExperience,
   updateExperience,
 } from "../services/experienceService.js";
+import {
+  createFolder,
+  deleteFolder,
+  listFolders,
+  updateFolder,
+} from "../services/folderService.js";
 import {
   createProject,
   deleteProject,
@@ -53,6 +61,53 @@ export const adminRouter = Router();
 
 adminRouter.use(requireAuth);
 adminRouter.use(csrfProtection);
+
+adminRouter.get("/folders", async (_req, res, next) => {
+  try {
+    res.json(await listFolders());
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/folders", validateBody(folderInputSchema), async (req, res, next) => {
+  try {
+    res.status(201).json(await createFolder(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.put(
+  "/folders/:id",
+  validateParams(idParamSchema),
+  validateBody(folderUpdateSchema),
+  async (req, res, next) => {
+    try {
+      const updated = await updateFolder(req.params.id, req.body);
+      if (!updated) {
+        res.status(404).json({ error: "Folder not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+adminRouter.delete("/folders/:id", validateParams(idParamSchema), async (req, res, next) => {
+  try {
+    const ok = await deleteFolder(req.params.id);
+    if (!ok) {
+      res.status(404).json({ error: "Folder not found" });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
 
 adminRouter.get("/projects", async (_req, res, next) => {
   try {

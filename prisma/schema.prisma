@@ -7,19 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ProjectFolder {
+  id        String    @id @default(cuid())
+  titleEn   String
+  titleRu   String
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  projects  Project[]
+}
+
 model Project {
-  id             String   @id @default(cuid())
-  title          String   @default("")
-  description    String   @default("")
-  titleEn        String   @default("")
-  titleRu        String   @default("")
-  descriptionEn  String   @default("")
-  descriptionRu  String   @default("")
+  id             String         @id @default(cuid())
+  title          String         @default("")
+  description    String         @default("")
+  titleEn        String         @default("")
+  titleRu        String         @default("")
+  descriptionEn  String         @default("")
+  descriptionRu  String         @default("")
   images         String
-  videos         String   @default("[]")
+  videos         String         @default("[]")
   tagsLinks      String
-  youtubeUrl     String   @default("")
-  createdAt      DateTime @default(now())
+  youtubeUrl     String         @default("")
+  sortOrder      Int            @default(0)
+  folderId       String?
+  folder         ProjectFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
 }
 
 model Skill {

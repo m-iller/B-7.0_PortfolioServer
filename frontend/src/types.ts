@@ -3,6 +3,15 @@ export interface TagLink {
   url: string;
 }
 
+export interface ProjectFolder {
+  id: string;
+  titleEn: string;
+  titleRu: string;
+  sortOrder: number;
+  projectCount: number;
+  createdAt: string;
+}
+
 export interface Project {
   id: string;
   titleEn: string;
@@ -14,6 +23,8 @@ export interface Project {
   tagsLinks: TagLink[];
   youtubeUrl: string;
   youtubeEmbed: string | null;
+  folderId: string | null;
+  sortOrder: number;
   createdAt: string;
 }
 
