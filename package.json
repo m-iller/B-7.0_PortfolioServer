@@ -2,7 +2,7 @@
   "name": "portfolio-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Secure containerized portfolio, admin panel, Telegram bot, and CLI",
+  "description": "Secure containerized portfolio, admin panel, DND Telegram bot, and CLI",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",

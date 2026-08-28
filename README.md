@@ -1,12 +1,12 @@
 # Portfolio Server
 
-Containerized personal portfolio and resume site with a terminal UI, a protected `/admin` panel, a Telegram ingestion bot, and a Docker CLI.
+Containerized personal portfolio and resume site with a terminal UI, a protected `/admin` panel, a DND Telegram timetable bot, and a Docker CLI.
 
 ## Stack
 
 - **Web:** Express + React (Vite), served from one container
 - **DB:** SQLite via Prisma (parameterized queries only)
-- **Bot:** Telegraf long-polling worker
+- **Bot:** Telegraf long-polling DND schedule worker (separate from the site)
 - **Auth:** bcrypt password hash, JWT in HttpOnly `SameSite=Strict` cookies, HMAC CSRF tokens, Helmet CSP, Zod validation
 
 ## Quick start
@@ -31,7 +31,7 @@ Volumes:
 | `JWT_SECRET` | >= 32 chars in production |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | hashed with bcrypt on boot |
 | `TELEGRAM_BOT_TOKEN` | empty = bot container idles |
-| `TELEGRAM_ADMIN_ID` | only this Telegram user can write |
+| `TELEGRAM_ADMIN_ID` | optional global DND settings admin (group creators can edit too) |
 | `COOKIE_SECURE` | `true` behind HTTPS |
 | `PUBLIC_ORIGIN` | public site URL |
 | `UPLOAD_MAX_MB` | image/video size cap (default 64) |
@@ -58,13 +58,14 @@ docker exec -it portfolio_backend cli list-skills
 
 ## Telegram bot
 
+DND timetable polls, not portfolio uploads.
+
 1. Create a bot with BotFather, put the token in `.env`.
-2. Set `TELEGRAM_ADMIN_ID` to your numeric user id.
-3. Restart compose. In chat: `/newproject`.
+2. BotFather → `/setprivacy` → **Disable** (plain `dnd` commands in groups).
+3. Optional: set `TELEGRAM_ADMIN_ID` to your numeric user id.
+4. Add the bot to the group. Restart compose.
 
-Flow: title EN → title RU → description EN → description RU → photos (`/done`) → videos (`/done` or `skip`) → YouTube URL or `skip` → `Label|url, Label|url` or `skip`.
-
-Other commands: `/help`, `/cancel`.
+Commands: `dnd help`, `dnd`, `dnd vote start`, `dnd place vote start`, `dnd place edit`. Auto poll default: Monday 00:00 GMT+3. Settings and places are per group in `./data/dnd/`.
 
 ## Local development (no Docker)
 

@@ -5,6 +5,7 @@ Step-by-step guide for running this portfolio server on a local PC or a VDS. The
 | Path | Contents |
 | --- | --- |
 | `./data` | SQLite database (`portfolio.db`) |
+| `./data/dnd` | DND bot JSON (settings, places, active polls) |
 | `./uploads` | Project images and videos |
 
 ---
@@ -76,7 +77,7 @@ Edit `.env` before the first public deploy. At minimum change these:
 | `PUBLIC_ORIGIN` | Yes | Public URL, e.g. `http://localhost:3000` or `https://your.domain` |
 | `COOKIE_SECURE` | Yes on HTTPS | Set `true` when the site is served over TLS |
 | `TELEGRAM_BOT_TOKEN` | No | Leave empty to idle the bot container |
-| `TELEGRAM_ADMIN_ID` | If bot is used | Numeric Telegram user id. Only this user can write |
+| `TELEGRAM_ADMIN_ID` | No | Numeric Telegram user id. Can edit DND settings and places in every group. Group creators can too. |
 | `UPLOAD_MAX_MB` | No | Default `64`. Raise this if you upload large videos |
 | `MEDIA_CLEANUP_GRACE_MIN` | No | Default `30`. New unused uploads are kept this many minutes so an unsaved admin form can still attach them |
 | `MEDIA_CLEANUP_INTERVAL_MIN` | No | Default `60`. Web container sweep interval |
@@ -268,22 +269,28 @@ docker exec -it portfolio_backend npm run cli -- add-skill --name "PTC Creo" --c
 
 ---
 
-## 8. Telegram bot
+## 8. Telegram bot (DND timetable)
 
-The bot container long-polls Telegram. It accepts commands **only** from `TELEGRAM_ADMIN_ID`. Anyone else gets `Access denied.`
+The bot container long-polls Telegram. It is **not** the portfolio editor. Portfolio content is still changed in `/admin` or the CLI. The bot only runs weekly D&D availability polls.
+
+Data lives in `./data/dnd/` (`settings.json`, `places.json`, `polls.json`), keyed by Telegram group id. It does not use the portfolio SQLite file.
 
 ### Enable the bot
 
 1. In Telegram, talk to [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token.
-2. Get your numeric user id (for example via `@userinfobot`).
-3. Put both values in `.env`:
+2. **Required:** BotFather → `/setprivacy` → **Disable**. Plain-text commands (`dnd help`) do not reach the bot in groups if privacy is on.
+3. Add the bot to the group. Give it permission to send messages and polls.
+4. Get your numeric user id (for example via `@userinfobot`) if you want a global settings admin.
+5. Put values in `.env`:
 
    ```env
    TELEGRAM_BOT_TOKEN=123456:ABC...
    TELEGRAM_ADMIN_ID=123456789
    ```
 
-4. Restart:
+   `TELEGRAM_ADMIN_ID` is optional. Without it, only each group's creator can change settings and places.
+
+6. Restart:
 
    ```bash
    docker compose up -d --force-recreate bot
@@ -291,30 +298,54 @@ The bot container long-polls Telegram. It accepts commands **only** from `TELEGR
 
 If `TELEGRAM_BOT_TOKEN` is empty, the bot container stays idle and does not crash.
 
-### Commands
+No group id in `.env`. Adding the bot to a group is enough. Several groups can use one bot.
+
+### Commands (plain text, Russian UI)
+
+Anyone in the group:
 
 | Command | Action |
 | --- | --- |
-| `/start` | Short help |
-| `/help` | Wizard steps |
-| `/newproject` | Start a new project |
-| `/done` | Finish the photo or video step |
-| `/cancel` | Abort the current wizard |
+| `dnd help` | Command list |
+| `dnd vote start` | Start the day poll now (stops an open poll in that group) |
+| `dnd place vote start` | Start the place poll now |
 
-### `/newproject` flow
+Group creator or `TELEGRAM_ADMIN_ID`:
 
-1. **Title EN**
-2. **Title RU**
-3. **Description EN**
-4. **Description RU**
-5. **Photos** — send one-by-one or as an album. Type `/done` when finished (photos are optional)
-6. **Videos** — send mp4 videos or a video document. Type `/done` or `skip` when finished
-7. **YouTube** — full watch/share URL, or `skip`
-8. **Links** — `GitHub|https://github.com/you/repo, Printables|https://www.printables.com/...` or `skip`
+| Command | Action |
+| --- | --- |
+| `dnd` | Settings (auto weekday/time GMT+3, «Не смогу» toggle, redactable result texts). Also works in private chat: pick a group |
+| `dnd place edit` | Add/delete places. Group or private chat |
 
-On success the bot downloads media into `/uploads`, writes the project to SQLite, and replies with the new title and id.
+Default auto poll: Monday 00:00 GMT+3. Change weekday and time in `dnd`. Catch-up: if the bot was down past that minute, it still fires later the same Moscow day.
 
-Telegram Bot API usually caps downloads around 20 MB. For larger files use `/admin` or the CLI.
+### Day poll
+
+Question: `Когда свободны?`
+
+Options: Понедельник … Воскресенье, plus `Не смогу`. Non-anonymous, multiple answers, votes can be retracted.
+
+Closes after 12 hours, or when unique voters ≥ `getChatMemberCount` minus bots (lurkers count as missing votes). State is saved so a container restart still closes on time.
+
+Result:
+
+- If anyone picked `Не смогу` and that setting is on: majority is skipped (text is editable).
+- Else top 3 days that have at least one vote (zero-vote days are omitted).
+- No votes: `Никто ни за что не проголосовал.` (editable).
+- Template default: `Большинство выбрало {days}`. Placeholders `{days}` and `{places}`.
+
+If auto place vote is on and majority was not skipped, a place poll starts after the day poll.
+
+### Place poll
+
+Question: `Где?`
+
+Places are stored in `data/dnd/places.json` as `{ "<groupId>": ["Место 1", "Место 2"] }`. Telegram allows at most 10 options. Need at least 2 places for a poll; one place is announced without a poll.
+
+### BotFather
+
+`/setprivacy` → Disable. Restart the bot after changing privacy.
+
 
 ---
 
@@ -396,7 +427,8 @@ npm run cli -- add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc
 | Cannot write database / uploads | `chmod 777 data uploads` on Linux, or recreate the folders |
 | Admin login rejected | Username/password must match `.env`. Restart web after changing them |
 | Bot idle, no replies | Token empty, or container not recreated after editing `.env` |
-| Bot: `Access denied.` | `TELEGRAM_ADMIN_ID` is wrong (must be the numeric id, not the @username) |
+| Bot ignores `dnd help` in a group | BotFather `/setprivacy` is still enabled. Disable it, kick/re-add the bot |
+| Bot: cannot start poll | Bot needs permission to send messages and polls |
 | Images 404 | File missing under `./uploads`, or path not starting with `/uploads/` |
 | CSRF / 403 on admin | Hard-refresh `/login`, then sign in again |
 | Port already in use | Change the left side of `"3000:3000"` in `docker-compose.yml` |
@@ -417,6 +449,6 @@ docker exec -it portfolio_backend wget -qO- http://127.0.0.1:3000/api/health
 - [ ] Strong `ADMIN_PASSWORD`
 - [ ] `COOKIE_SECURE=true` and HTTPS
 - [ ] `PUBLIC_ORIGIN` set to the real HTTPS URL
-- [ ] Telegram token and admin id set only if the bot is needed
+- [ ] Telegram token set only if the DND bot is needed; `TELEGRAM_ADMIN_ID` is the global settings admin
 - [ ] Host firewall: do not expose port 3000 to the world if a reverse proxy is used
 - [ ] Regular copies of `data/` and `uploads/`
