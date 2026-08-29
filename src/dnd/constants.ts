@@ -17,7 +17,12 @@ export const WEEKDAY_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "�
 export const SCHEDULE_QUESTION = "Когда свободны?";
 export const PLACE_QUESTION = "Где?";
 
-export const POLL_TTL_MS = 12 * 60 * 60 * 1000;
+export const DEFAULT_POLL_TTL_HOURS = 12;
+export const MIN_POLL_TTL_HOURS = 1;
+export const MAX_POLL_TTL_HOURS = 48;
+export const MIN_QUORUM_COUNT = 1;
+export const MAX_QUORUM_COUNT = 99;
+export const POLL_TTL_MS = DEFAULT_POLL_TTL_HOURS * 60 * 60 * 1000;
 export const MAX_POLL_OPTIONS = 10;
 export const TOP_N = 3;
 

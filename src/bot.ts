@@ -1,9 +1,15 @@
 import { Telegraf } from "telegraf";
 import { config } from "./config.js";
 import { isGroupChat, isPrivileged } from "./dnd/access.js";
-import { MAX_POLL_OPTIONS } from "./dnd/constants.js";
+import {
+  MAX_POLL_OPTIONS,
+  MAX_POLL_TTL_HOURS,
+  MAX_QUORUM_COUNT,
+  MIN_POLL_TTL_HOURS,
+  MIN_QUORUM_COUNT,
+} from "./dnd/constants.js";
 import { wrap } from "./dnd/logic.js";
-import { DndRuntime } from "./dnd/runtime.js";
+import { DndRuntime, NoActivePollError } from "./dnd/runtime.js";
 import {
   ensureChat,
   getPlaces,
@@ -61,7 +67,7 @@ async function showSettings(
   const title = (await telegram.getChat(chatId).catch(() => null)) as { title?: string } | null;
   const settings = ensureChat(chatId, title?.title);
   const canEdit = await isPrivileged(telegram, chatId, userId);
-  await send(settingsText(chatId, settings, canEdit), canEdit ? settingsKeyboard(chatId) : undefined);
+  await send(settingsText(chatId, settings, canEdit), canEdit ? settingsKeyboard(chatId, settings) : undefined);
 }
 
 async function showPlaces(
@@ -165,13 +171,42 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (cmd === "dnd") {
+    if (cmd === "dnd stop") {
+      pending.delete(userId);
+      if (!isGroupChat(chat.type)) {
+        await reply("Остановить опрос можно только в группе.");
+        return;
+      }
+      if (!(await isPrivileged(bot.telegram, chat.id, userId))) {
+        await reply("Остановить может создатель чата или админ бота.");
+        return;
+      }
+      try {
+        await runtime.stopPollEarly(chat.id);
+      } catch (error) {
+        if (error instanceof NoActivePollError) {
+          await reply(error.message);
+          return;
+        }
+        console.error("[dnd] stop", error);
+        await reply("Не удалось остановить опрос.");
+      }
+      return;
+    }
+
+    if (cmd === "dnd settings") {
       pending.delete(userId);
       if (isGroupChat(chat.type)) {
         await showSettings(bot.telegram, chat.id, userId, reply);
         return;
       }
       await pickGroup(bot.telegram, userId, "s", reply);
+      return;
+    }
+
+    if (cmd === "dnd") {
+      pending.delete(userId);
+      await reply("Настройки: dnd settings");
       return;
     }
 
@@ -198,7 +233,7 @@ async function main(): Promise<void> {
       patchSettings(wait.chatId, { [wait.field]: trimmed });
       pending.delete(userId);
       const settings = getSettings(wait.chatId);
-      await reply(settingsText(wait.chatId, settings, true), settingsKeyboard(wait.chatId));
+      await reply(settingsText(wait.chatId, settings, true), settingsKeyboard(wait.chatId, settings));
       return;
     }
 
@@ -299,6 +334,38 @@ async function main(): Promise<void> {
       if (action === "mm") {
         patchSettings(chatId, { autoMinute: wrap(Math.floor(settings.autoMinute / 15) - 1, 0, 3) * 15 });
       }
+      if (action === "th") {
+        patchSettings(chatId, { pollTtlHours: wrap(settings.pollTtlHours + 1, MIN_POLL_TTL_HOURS, MAX_POLL_TTL_HOURS) });
+      }
+      if (action === "tl") {
+        patchSettings(chatId, { pollTtlHours: wrap(settings.pollTtlHours - 1, MIN_POLL_TTL_HOURS, MAX_POLL_TTL_HOURS) });
+      }
+      if (action === "qa") patchSettings(chatId, { scheduleQuorumAll: !settings.scheduleQuorumAll });
+      if (action === "qp") {
+        patchSettings(chatId, {
+          scheduleQuorumAll: false,
+          scheduleQuorumCount: Math.min(MAX_QUORUM_COUNT, settings.scheduleQuorumCount + 1),
+        });
+      }
+      if (action === "qm") {
+        patchSettings(chatId, {
+          scheduleQuorumAll: false,
+          scheduleQuorumCount: Math.max(MIN_QUORUM_COUNT, settings.scheduleQuorumCount - 1),
+        });
+      }
+      if (action === "ra") patchSettings(chatId, { placeQuorumAll: !settings.placeQuorumAll });
+      if (action === "rp") {
+        patchSettings(chatId, {
+          placeQuorumAll: false,
+          placeQuorumCount: Math.min(MAX_QUORUM_COUNT, settings.placeQuorumCount + 1),
+        });
+      }
+      if (action === "rm") {
+        patchSettings(chatId, {
+          placeQuorumAll: false,
+          placeQuorumCount: Math.max(MIN_QUORUM_COUNT, settings.placeQuorumCount - 1),
+        });
+      }
       if (action === "tz" || action === "tr" || action === "tn") {
         const field =
           action === "tz" ? "zeroVotesMessage" : action === "tr" ? "resultMessage" : "nemoguMessage";
@@ -310,7 +377,7 @@ async function main(): Promise<void> {
       await ctx.answerCbQuery();
       const next = getSettings(chatId);
       try {
-        await ctx.editMessageText(settingsText(chatId, next, true), settingsKeyboard(chatId));
+        await ctx.editMessageText(settingsText(chatId, next, true), settingsKeyboard(chatId, next));
       } catch {
         /* not modified */
       }
@@ -378,7 +445,11 @@ async function main(): Promise<void> {
     ensureChat(chat.id, title);
     await ctx.telegram.sendMessage(
       chat.id,
-      ["DND-бот на месте. Напишите dnd help.", "BotFather → /setprivacy → Disable, иначе команды без / не работают."].join(
+      [
+        "DND-бот на месте. Напишите dnd help.",
+        "BotFather → /setprivacy → Disable, иначе команды без / не работают.",
+        "Дайте боту право закреплять сообщения — опросы пинятся.",
+      ].join(
         "\n"
       )
     );

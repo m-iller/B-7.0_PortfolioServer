@@ -2,7 +2,6 @@ import type { Telegram } from "telegraf";
 import {
   MAX_POLL_OPTIONS,
   PLACE_QUESTION,
-  POLL_TTL_MS,
   SCHEDULE_OPTIONS,
   SCHEDULE_QUESTION,
 } from "./constants.js";
@@ -29,6 +28,13 @@ import {
 import type { ActivePoll, ChatSettings } from "./types.js";
 
 type TelegramApi = Telegram;
+
+export class NoActivePollError extends Error {
+  constructor() {
+    super("Нет активного опроса.");
+    this.name = "NoActivePollError";
+  }
+}
 
 const tails = new Map<number, Promise<void>>();
 
@@ -74,6 +80,15 @@ export class DndRuntime {
 
   async startPlacePoll(chatId: number, reason: "manual" | "auto"): Promise<string> {
     return serial(chatId, () => this.startPlaceUnlocked(chatId, reason));
+  }
+
+  async stopPollEarly(chatId: number): Promise<void> {
+    return serial(chatId, async () => {
+      if (!getPoll(chatId)) {
+        throw new NoActivePollError();
+      }
+      await this.finishUnlocked(chatId, false);
+    });
   }
 
   async onPollAnswer(pollId: string, userId: number, optionIds: number[]): Promise<void> {
@@ -151,6 +166,7 @@ export class DndRuntime {
       options,
       voters: {},
     });
+    await this.pinUnlocked(chatId, message.message_id);
     if (reason === "auto" && kind === "schedule") {
       patchSettings(chatId, { lastAutoDate: moscowParts().dateKey });
     }
@@ -159,7 +175,7 @@ export class DndRuntime {
 
   private async checkExpiries(): Promise<void> {
     for (const poll of listPolls()) {
-      if (!elapsedPastTtl(poll)) continue;
+      if (!elapsedPastTtl(poll, getSettings(poll.chatId))) continue;
       await serial(poll.chatId, () => this.finishUnlocked(poll.chatId, false)).catch((error) =>
         console.error("[dnd] expire", poll.chatId, error)
       );
@@ -192,6 +208,7 @@ export class DndRuntime {
     } catch (error) {
       if (!silent) console.error("[dnd] stopPoll", chatId, error);
     }
+    await this.unpinUnlocked(chatId, poll.messageId);
 
     if (silent) return;
 
@@ -218,16 +235,42 @@ export class DndRuntime {
   private async everyoneVoted(poll: ActivePoll): Promise<boolean> {
     const voters = uniqueVoterCount(poll.voters);
     if (voters === 0) return false;
+    const settings = getSettings(poll.chatId);
+    const all = poll.kind === "place" ? settings.placeQuorumAll : settings.scheduleQuorumAll;
+    const count = poll.kind === "place" ? settings.placeQuorumCount : settings.scheduleQuorumCount;
+    if (!all) {
+      return voters >= count;
+    }
     try {
-      const memberCount = await this.telegram.getChatMembersCount(poll.chatId);
-      const admins = await this.telegram.getChatAdministrators(poll.chatId);
-      const botIds = new Set(admins.filter((admin) => admin.user.is_bot).map((admin) => admin.user.id));
-      botIds.add(this.botId);
-      const humans = memberCount - botIds.size;
+      const humans = await this.humanMemberCount(poll.chatId);
       return humans > 0 && voters >= humans;
     } catch (error) {
       console.error("[dnd] member count", poll.chatId, error);
       return false;
+    }
+  }
+
+  private async humanMemberCount(chatId: number): Promise<number> {
+    const memberCount = await this.telegram.getChatMembersCount(chatId);
+    const admins = await this.telegram.getChatAdministrators(chatId);
+    const botIds = new Set(admins.filter((admin) => admin.user.is_bot).map((admin) => admin.user.id));
+    botIds.add(this.botId);
+    return memberCount - botIds.size;
+  }
+
+  private async pinUnlocked(chatId: number, messageId: number): Promise<void> {
+    try {
+      await this.telegram.pinChatMessage(chatId, messageId, { disable_notification: true });
+    } catch (error) {
+      console.error("[dnd] pin", chatId, error);
+    }
+  }
+
+  private async unpinUnlocked(chatId: number, messageId: number): Promise<void> {
+    try {
+      await this.telegram.unpinChatMessage(chatId, messageId);
+    } catch {
+      /* already unpinned or no rights */
     }
   }
 }
@@ -244,8 +287,8 @@ function resultFor(
   return scheduleResult(settings, tallies);
 }
 
-function elapsedPastTtl(poll: ActivePoll): boolean {
+function elapsedPastTtl(poll: ActivePoll, settings: ChatSettings): boolean {
   const started = Date.parse(poll.startedAt);
   if (!Number.isFinite(started)) return true;
-  return Date.now() - started >= POLL_TTL_MS;
+  return Date.now() - started >= settings.pollTtlHours * 60 * 60 * 1000;
 }

@@ -7,15 +7,17 @@ export function helpText(): string {
   return [
     "Команды DND:",
     "dnd help — этот список",
-    "dnd — настройки группы",
+    "dnd settings — настройки группы",
     "dnd vote start — опрос дней",
     "dnd place vote start — опрос места",
     "dnd place edit — места (создатель чата или админ бота)",
+    "dnd stop — закрыть текущий опрос (создатель чата или админ бота)",
     "",
     "Настройки и тексты меняет создатель группы или TELEGRAM_ADMIN_ID.",
     "Опросы может запускать кто угодно в группе.",
     "",
     "BotFather → /setprivacy → Disable. Иначе бот не видит текст без /.",
+    "Для пина опросов боту нужно право закреплять сообщения.",
     "Плейсхолдеры в тексте результата: {days} {places}",
   ].join("\n");
 }
@@ -30,6 +32,9 @@ export function settingsText(chatId: number, settings: ChatSettings, canEdit: bo
     `Авто-опрос дней: ${onOff(settings.autoVote)} · ${day} ${time} (GMT+3)`,
     `Авто-опрос места: ${onOff(settings.autoPlaceVote)} (после опроса дней)`,
     `«Не смогу» отменяет большинство: ${onOff(settings.skipIfNemogu)}`,
+    `Длительность опроса: ${settings.pollTtlHours} ч`,
+    `Кворум дней: ${quorumLabel(settings.scheduleQuorumAll, settings.scheduleQuorumCount)}`,
+    `Кворум места: ${quorumLabel(settings.placeQuorumAll, settings.placeQuorumCount)}`,
     "",
     "Сообщения:",
     `• пустой: ${settings.zeroVotesMessage}`,
@@ -42,7 +47,7 @@ export function settingsText(chatId: number, settings: ChatSettings, canEdit: bo
   return lines.join("\n");
 }
 
-export function settingsKeyboard(chatId: number) {
+export function settingsKeyboard(chatId: number, settings: ChatSettings) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback("авто дни", cb("s", "av", chatId)),
@@ -57,6 +62,26 @@ export function settingsKeyboard(chatId: number) {
     [
       Markup.button.callback("мин −", cb("s", "mm", chatId)),
       Markup.button.callback("мин +", cb("s", "mp", chatId)),
+    ],
+    [
+      Markup.button.callback("срок −", cb("s", "tl", chatId)),
+      Markup.button.callback("срок +", cb("s", "th", chatId)),
+    ],
+    [
+      Markup.button.callback(
+        `дни: ${quorumShort(settings.scheduleQuorumAll, settings.scheduleQuorumCount)}`,
+        cb("s", "qa", chatId)
+      ),
+      Markup.button.callback("дни −", cb("s", "qm", chatId)),
+      Markup.button.callback("дни +", cb("s", "qp", chatId)),
+    ],
+    [
+      Markup.button.callback(
+        `место: ${quorumShort(settings.placeQuorumAll, settings.placeQuorumCount)}`,
+        cb("s", "ra", chatId)
+      ),
+      Markup.button.callback("место −", cb("s", "rm", chatId)),
+      Markup.button.callback("место +", cb("s", "rp", chatId)),
     ],
     [
       Markup.button.callback("текст: пустой", cb("s", "tz", chatId)),
@@ -113,6 +138,14 @@ export function parseCallback(data: string): { scope: string; action: string; ch
 
 export function onOff(value: boolean): string {
   return value ? "вкл" : "выкл";
+}
+
+function quorumLabel(all: boolean, count: number): string {
+  return all ? "все в группе" : `${count} чел.`;
+}
+
+function quorumShort(all: boolean, count: number): string {
+  return all ? "все" : String(count);
 }
 
 function cb(scope: string, action: string, chatId: number, extra?: number): string {
