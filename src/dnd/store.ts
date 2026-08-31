@@ -1,13 +1,26 @@
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "../config.js";
-import { mergeSettings, type ActivePoll, type ChatSettings } from "./types.js";
+import { HISTORY_LIMIT } from "./constants.js";
+import {
+  mergeRosterPerson,
+  mergeSession,
+  mergeSettings,
+  type ActivePoll,
+  type ChatSession,
+  type ChatSettings,
+  type HistoryEntry,
+  type RosterPerson,
+} from "./types.js";
 
 const dir = path.join(config.dataDir, "dnd");
 
 type SettingsFile = Record<string, ChatSettings>;
 type PlacesFile = Record<string, string[]>;
 type PollsFile = Record<string, ActivePoll>;
+type RosterFile = Record<string, Record<string, RosterPerson>>;
+type SessionFile = Record<string, ChatSession>;
+type HistoryFile = Record<string, HistoryEntry[]>;
 
 function readJson<T>(file: string, fallback: T): T {
   const full = path.join(dir, file);
@@ -42,6 +55,7 @@ export function listChatIds(): number[] {
     ...Object.keys(readJson<SettingsFile>("settings.json", {})),
     ...Object.keys(readJson<PlacesFile>("places.json", {})),
     ...Object.keys(readJson<PollsFile>("polls.json", {})),
+    ...Object.keys(readJson<RosterFile>("roster.json", {})),
   ]);
   return [...ids].map(Number).filter((id) => Number.isFinite(id));
 }
@@ -92,7 +106,9 @@ export function putPlaces(chatId: number, places: string[]): string[] {
 
 export function getPoll(chatId: number): ActivePoll | undefined {
   const all = readJson<PollsFile>("polls.json", {});
-  return all[chatKey(chatId)];
+  const poll = all[chatKey(chatId)];
+  if (!poll) return undefined;
+  return { ...poll, reminderSent: poll.reminderSent === true, voters: poll.voters ?? {} };
 }
 
 export function putPoll(poll: ActivePoll): void {
@@ -108,5 +124,81 @@ export function deletePoll(chatId: number): void {
 }
 
 export function listPolls(): ActivePoll[] {
-  return Object.values(readJson<PollsFile>("polls.json", {}));
+  return Object.values(readJson<PollsFile>("polls.json", {})).map((poll) => ({
+    ...poll,
+    reminderSent: poll.reminderSent === true,
+    voters: poll.voters ?? {},
+  }));
+}
+
+export function getRoster(chatId: number): Record<string, RosterPerson> {
+  const all = readJson<RosterFile>("roster.json", {});
+  const raw = all[chatKey(chatId)] ?? {};
+  const next: Record<string, RosterPerson> = {};
+  for (const [id, person] of Object.entries(raw)) {
+    next[id] = mergeRosterPerson(person);
+  }
+  return next;
+}
+
+export function putRoster(chatId: number, roster: Record<string, RosterPerson>): void {
+  const all = readJson<RosterFile>("roster.json", {});
+  all[chatKey(chatId)] = roster;
+  writeJson("roster.json", all);
+}
+
+export function upsertRosterPerson(
+  chatId: number,
+  userId: number,
+  patch: Partial<RosterPerson>
+): RosterPerson {
+  const roster = getRoster(chatId);
+  const key = String(userId);
+  const next = mergeRosterPerson({ ...roster[key], ...patch });
+  roster[key] = next;
+  putRoster(chatId, roster);
+  return next;
+}
+
+export function findRosterByUsername(chatId: number, username: string): { userId: number; person: RosterPerson } | undefined {
+  const needle = username.replace(/^@/, "").toLowerCase();
+  if (!needle) return undefined;
+  for (const [id, person] of Object.entries(getRoster(chatId))) {
+    if (person.username.toLowerCase() === needle) {
+      return { userId: Number(id), person };
+    }
+  }
+  return undefined;
+}
+
+export function getSession(chatId: number): ChatSession {
+  const all = readJson<SessionFile>("session.json", {});
+  return mergeSession(all[chatKey(chatId)]);
+}
+
+export function putSession(chatId: number, session: ChatSession): ChatSession {
+  const all = readJson<SessionFile>("session.json", {});
+  const merged = mergeSession(session);
+  all[chatKey(chatId)] = merged;
+  writeJson("session.json", all);
+  return merged;
+}
+
+export function patchSession(chatId: number, patch: Partial<ChatSession>): ChatSession {
+  return putSession(chatId, { ...getSession(chatId), ...patch });
+}
+
+export function getHistory(chatId: number): HistoryEntry[] {
+  const all = readJson<HistoryFile>("history.json", {});
+  const list = all[chatKey(chatId)];
+  return Array.isArray(list) ? list : [];
+}
+
+export function pushHistory(chatId: number, entry: HistoryEntry): HistoryEntry[] {
+  const all = readJson<HistoryFile>("history.json", {});
+  const key = chatKey(chatId);
+  const list = [...(Array.isArray(all[key]) ? all[key] : []), entry].slice(-HISTORY_LIMIT);
+  all[key] = list;
+  writeJson("history.json", all);
+  return list;
 }

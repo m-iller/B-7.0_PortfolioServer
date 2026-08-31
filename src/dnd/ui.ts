@@ -1,7 +1,8 @@
 import { Markup } from "telegraf";
 import { WEEKDAY_SHORT } from "./constants.js";
+import { mentionOf } from "./logic.js";
 import { pad2 } from "./time.js";
-import type { ChatSettings } from "./types.js";
+import type { ChatSettings, RosterPerson } from "./types.js";
 
 export function helpText(): string {
   return [
@@ -12,27 +13,33 @@ export function helpText(): string {
     "dnd place vote start — опрос места",
     "dnd place edit — места (создатель чата или админ бота)",
     "dnd stop — закрыть текущий опрос (создатель чата или админ бота)",
+    "dnd always — я всегда могу (в группе)",
+    "dnd always @user — то же для другого (создатель / админ бота)",
+    "dnd spectators — зрители, не в кворуме и не в тегах",
+    "dnd stats — таблица «Не смогу» и последние сессии",
     "",
     "Настройки и тексты меняет создатель группы или TELEGRAM_ADMIN_ID.",
     "Опросы может запускать кто угодно в группе.",
     "",
-    "BotFather → /setprivacy → Disable. Иначе бот не видит текст без /.",
     "Для пина опросов боту нужно право закреплять сообщения.",
-    "Плейсхолдеры в тексте результата: {days} {places}",
+    "Плейсхолдеры: {day} {days} {place} {places} {tags}",
   ].join("\n");
 }
 
 export function settingsText(chatId: number, settings: ChatSettings, canEdit: boolean): string {
   const day = WEEKDAY_SHORT[settings.autoWeekday] ?? "пн";
   const time = `${pad2(settings.autoHour)}:${pad2(settings.autoMinute)}`;
+  const remind = settings.reminderHours <= 0 ? "выкл" : `${settings.reminderHours} ч`;
   const lines = [
     `Настройки DND — ${settings.title}`,
     `id: ${chatId}`,
     "",
     `Авто-опрос дней: ${onOff(settings.autoVote)} · ${day} ${time} (GMT+3)`,
-    `Авто-опрос места: ${onOff(settings.autoPlaceVote)} (после опроса дней)`,
+    `Авто-опрос места: ${onOff(settings.autoPlaceVote)} (после опроса дней; не если есть «Не смогу»)`,
     `«Не смогу» отменяет большинство: ${onOff(settings.skipIfNemogu)}`,
     `Длительность опроса: ${settings.pollTtlHours} ч`,
+    `Напоминание: ${remind}`,
+    `Пин: ${onOff(settings.pinPolls)}`,
     `Кворум дней: ${quorumLabel(settings.scheduleQuorumAll, settings.scheduleQuorumCount)}`,
     `Кворум места: ${quorumLabel(settings.placeQuorumAll, settings.placeQuorumCount)}`,
     "",
@@ -40,6 +47,7 @@ export function settingsText(chatId: number, settings: ChatSettings, canEdit: bo
     `• пустой: ${settings.zeroVotesMessage}`,
     `• результат: ${settings.resultMessage}`,
     `• не смогу: ${settings.nemoguMessage}`,
+    `• под вопросом: ${settings.uncertainMessage}`,
   ];
   if (!canEdit) {
     lines.push("", "Менять может создатель чата или админ бота.");
@@ -62,10 +70,12 @@ export function settingsKeyboard(chatId: number, settings: ChatSettings) {
     [
       Markup.button.callback("мин −", cb("s", "mm", chatId)),
       Markup.button.callback("мин +", cb("s", "mp", chatId)),
-    ],
-    [
       Markup.button.callback("срок −", cb("s", "tl", chatId)),
       Markup.button.callback("срок +", cb("s", "th", chatId)),
+    ],
+    [
+      Markup.button.callback(`пин ${onOff(settings.pinPolls)}`, cb("s", "pn", chatId)),
+      Markup.button.callback(`напом. ${reminderShort(settings.reminderHours)}`, cb("s", "rh", chatId)),
     ],
     [
       Markup.button.callback(
@@ -87,7 +97,10 @@ export function settingsKeyboard(chatId: number, settings: ChatSettings) {
       Markup.button.callback("текст: пустой", cb("s", "tz", chatId)),
       Markup.button.callback("текст: результат", cb("s", "tr", chatId)),
     ],
-    [Markup.button.callback("текст: не смогу", cb("s", "tn", chatId))],
+    [
+      Markup.button.callback("текст: не смогу", cb("s", "tn", chatId)),
+      Markup.button.callback("текст: под вопросом", cb("s", "tu", chatId)),
+    ],
   ]);
 }
 
@@ -116,9 +129,37 @@ export function placesKeyboard(chatId: number, places: string[]) {
   return Markup.inlineKeyboard(rows);
 }
 
+export function spectatorsText(chatId: number, title: string, people: { userId: number; person: RosterPerson }[]): string {
+  const list =
+    people.length === 0
+      ? "(нет — все участники из списка бота считаются игроками)"
+      : people.map((row, index) => `${index + 1}. ${mentionOf(row.person)}`).join("\n");
+  return [
+    `Зрители — ${title}`,
+    `id: ${chatId}`,
+    "",
+    list,
+    "",
+    "Зритель не в кворуме и не в тегах. «+ @user» или «- 1». стоп — выход.",
+    "Человек должен хотя бы раз написать в чат или проголосовать, иначе бот его не видит.",
+  ].join("\n");
+}
+
+export function spectatorsKeyboard(chatId: number, people: { userId: number; person: RosterPerson }[]) {
+  const rows = [];
+  const delRow = people.map((_, index) =>
+    Markup.button.callback(`убрать ${index + 1}`, cb("v", "d", chatId, index))
+  );
+  for (let i = 0; i < delRow.length; i += 3) {
+    rows.push(delRow.slice(i, i + 3));
+  }
+  rows.push([Markup.button.callback("готово", cb("v", "x", chatId))]);
+  return Markup.inlineKeyboard(rows);
+}
+
 export function groupPickKeyboard(
   groups: { chatId: number; title: string }[],
-  kind: "s" | "p"
+  kind: "s" | "p" | "v"
 ) {
   return Markup.inlineKeyboard(
     groups.map((group) => [Markup.button.callback(clip(group.title), cb("g", kind, group.chatId))])
@@ -126,7 +167,7 @@ export function groupPickKeyboard(
 }
 
 export function parseCallback(data: string): { scope: string; action: string; chatId: number; extra?: number } | undefined {
-  const match = /^(g|s|p):([a-z]+):(-?\d+)(?::(\d+))?$/.exec(data);
+  const match = /^(g|s|p|o|v):([a-z]+):(-?\d+)(?::(\d+))?$/.exec(data);
   if (!match) return undefined;
   return {
     scope: match[1],
@@ -146,6 +187,10 @@ function quorumLabel(all: boolean, count: number): string {
 
 function quorumShort(all: boolean, count: number): string {
   return all ? "все" : String(count);
+}
+
+function reminderShort(hours: number): string {
+  return hours <= 0 ? "выкл" : `${hours}ч`;
 }
 
 function cb(scope: string, action: string, chatId: number, extra?: number): string {

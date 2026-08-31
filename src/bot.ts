@@ -9,14 +9,17 @@ import {
   MIN_QUORUM_COUNT,
 } from "./dnd/constants.js";
 import { wrap } from "./dnd/logic.js";
-import { DndRuntime, NoActivePollError } from "./dnd/runtime.js";
+import { DndRuntime, NoActivePollError, statsText } from "./dnd/runtime.js";
 import {
   ensureChat,
+  findRosterByUsername,
   getPlaces,
+  getRoster,
   getSettings,
   listChatIds,
   patchSettings,
   putPlaces,
+  upsertRosterPerson,
 } from "./dnd/store.js";
 import {
   groupPickKeyboard,
@@ -26,12 +29,18 @@ import {
   placesText,
   settingsKeyboard,
   settingsText,
+  spectatorsKeyboard,
+  spectatorsText,
 } from "./dnd/ui.js";
+import type { RosterPerson } from "./dnd/types.js";
+
+type TextField = "zeroVotesMessage" | "resultMessage" | "nemoguMessage" | "uncertainMessage";
 
 type Pending =
-  | { kind: "text"; field: "zeroVotesMessage" | "resultMessage" | "nemoguMessage"; chatId: number }
+  | { kind: "text"; field: TextField; chatId: number }
   | { kind: "addPlace"; chatId: number }
-  | { kind: "places"; chatId: number };
+  | { kind: "places"; chatId: number }
+  | { kind: "spectators"; chatId: number };
 
 const pending = new Map<number, Pending>();
 
@@ -87,10 +96,33 @@ async function showPlaces(
   return true;
 }
 
+function spectatorRows(chatId: number): { userId: number; person: RosterPerson }[] {
+  return Object.entries(getRoster(chatId))
+    .filter(([, person]) => person.spectator && !person.left)
+    .map(([id, person]) => ({ userId: Number(id), person }));
+}
+
+async function showSpectators(
+  telegram: Telegraf["telegram"],
+  chatId: number,
+  userId: number,
+  send: (text: string, extra?: object) => Promise<unknown>
+): Promise<boolean> {
+  if (!(await isPrivileged(telegram, chatId, userId))) {
+    await send("Зрителей меняет создатель чата или админ бота.");
+    return false;
+  }
+  const title = (await telegram.getChat(chatId).catch(() => null)) as { title?: string } | null;
+  const settings = ensureChat(chatId, title?.title);
+  const people = spectatorRows(chatId);
+  await send(spectatorsText(chatId, settings.title, people), spectatorsKeyboard(chatId, people));
+  return true;
+}
+
 async function pickGroup(
   telegram: Telegraf["telegram"],
   userId: number,
-  purpose: "s" | "p",
+  purpose: "s" | "p" | "v",
   reply: (text: string, extra?: object) => Promise<unknown>
 ): Promise<void> {
   const groups = await privilegedGroups(telegram, userId);
@@ -99,6 +131,14 @@ async function pickGroup(
     return;
   }
   await reply("Выберите группу:", groupPickKeyboard(groups, purpose));
+}
+
+function toggleAlways(chatId: number, targetId: number, username: string, firstName: string): string {
+  const current = getRoster(chatId)[String(targetId)];
+  const next = !current?.alwaysCan;
+  upsertRosterPerson(chatId, targetId, { username, firstName, alwaysCan: next, left: false });
+  const who = username ? `@${username}` : firstName;
+  return next ? `${who} всегда может — дни засчитаются без голоса.` : `${who} больше не «всегда могу».`;
 }
 
 async function main(): Promise<void> {
@@ -124,9 +164,48 @@ async function main(): Promise<void> {
     const chat = ctx.chat;
     const reply = (body: string, extra?: object) => ctx.reply(body, extra);
 
+    if (isGroupChat(chat.type) && ctx.from) {
+      runtime.rememberUser(chat.id, ctx.from);
+    }
+
     if (cmd === "dnd help") {
       pending.delete(userId);
       await reply(helpText());
+      return;
+    }
+
+    if (cmd === "dnd stats") {
+      pending.delete(userId);
+      if (!isGroupChat(chat.type)) {
+        await reply("Статистика смотрится в группе.");
+        return;
+      }
+      await reply(statsText(chat.id));
+      return;
+    }
+
+    const alwaysMatch = /^dnd always(?:\s+@?(\S+))?$/.exec(cmd);
+    if (alwaysMatch) {
+      pending.delete(userId);
+      if (!isGroupChat(chat.type)) {
+        await reply("dnd always — только в группе.");
+        return;
+      }
+      const targetName = alwaysMatch[1];
+      if (!targetName) {
+        await reply(toggleAlways(chat.id, userId, ctx.from.username ?? "", ctx.from.first_name));
+        return;
+      }
+      if (!(await isPrivileged(bot.telegram, chat.id, userId))) {
+        await reply("Чужой статус меняет создатель чата или админ бота.");
+        return;
+      }
+      const found = findRosterByUsername(chat.id, targetName);
+      if (!found) {
+        await reply("Нет в списке. Пусть напишет в чат или проголосует.");
+        return;
+      }
+      await reply(toggleAlways(chat.id, found.userId, found.person.username, found.person.firstName));
       return;
     }
 
@@ -168,6 +247,18 @@ async function main(): Promise<void> {
         return;
       }
       await pickGroup(bot.telegram, userId, "p", reply);
+      return;
+    }
+
+    if (cmd === "dnd spectators") {
+      pending.delete(userId);
+      if (isGroupChat(chat.type)) {
+        if (await showSpectators(bot.telegram, chat.id, userId, reply)) {
+          pending.set(userId, { kind: "spectators", chatId: chat.id });
+        }
+        return;
+      }
+      await pickGroup(bot.telegram, userId, "v", reply);
       return;
     }
 
@@ -234,6 +325,42 @@ async function main(): Promise<void> {
       pending.delete(userId);
       const settings = getSettings(wait.chatId);
       await reply(settingsText(wait.chatId, settings, true), settingsKeyboard(wait.chatId, settings));
+      return;
+    }
+
+    if (wait.kind === "spectators") {
+      if (!(await isPrivileged(bot.telegram, wait.chatId, userId))) {
+        pending.delete(userId);
+        await reply("Недостаточно прав.");
+        return;
+      }
+      const replyFrom = ctx.message.reply_to_message?.from;
+      const addMatch = /^\+\s+@?(\S+)$/.exec(trimmed);
+      const delMatch = /^-\s+(\d+)$/.exec(trimmed);
+      if (replyFrom && !replyFrom.is_bot && (trimmed === "+" || trimmed.toLowerCase() === "+")) {
+        runtime.rememberUser(wait.chatId, replyFrom, { spectator: true });
+      } else if (addMatch) {
+        const found = findRosterByUsername(wait.chatId, addMatch[1]);
+        if (!found) {
+          await reply("Нет в списке. Пусть напишет в чат или проголосует.");
+          return;
+        }
+        upsertRosterPerson(wait.chatId, found.userId, { spectator: true });
+      } else if (delMatch) {
+        const people = spectatorRows(wait.chatId);
+        const index = Number(delMatch[1]) - 1;
+        if (index < 0 || index >= people.length) {
+          await reply("Нет такого номера.");
+          return;
+        }
+        upsertRosterPerson(wait.chatId, people[index].userId, { spectator: false });
+      } else {
+        return;
+      }
+      pending.set(userId, { kind: "spectators", chatId: wait.chatId });
+      const settings = getSettings(wait.chatId);
+      const people = spectatorRows(wait.chatId);
+      await reply(spectatorsText(wait.chatId, settings.title, people), spectatorsKeyboard(wait.chatId, people));
       return;
     }
 
@@ -311,6 +438,13 @@ async function main(): Promise<void> {
         }
         return;
       }
+      if (action === "v") {
+        await ctx.answerCbQuery();
+        if (await showSpectators(bot.telegram, chatId, userId, (body, extraMarkup) => ctx.editMessageText(body, extraMarkup))) {
+          pending.set(userId, { kind: "spectators", chatId });
+        }
+        return;
+      }
       await ctx.answerCbQuery();
       return;
     }
@@ -320,11 +454,31 @@ async function main(): Promise<void> {
       return;
     }
 
+    if (scope === "o") {
+      try {
+        if (action === "y") {
+          const result = await runtime.confirmOneshot(chatId);
+          await ctx.answerCbQuery(result.slice(0, 180));
+        } else if (action === "n") {
+          await runtime.declineOneshot(chatId);
+          await ctx.answerCbQuery("Без опроса места.");
+        } else {
+          await ctx.answerCbQuery();
+        }
+      } catch (error) {
+        console.error("[dnd] oneshot", error);
+        await ctx.answerCbQuery("Не вышло.", { show_alert: true });
+      }
+      return;
+    }
+
     if (scope === "s") {
       const settings = getSettings(chatId);
       if (action === "av") patchSettings(chatId, { autoVote: !settings.autoVote });
       if (action === "ap") patchSettings(chatId, { autoPlaceVote: !settings.autoPlaceVote });
       if (action === "nm") patchSettings(chatId, { skipIfNemogu: !settings.skipIfNemogu });
+      if (action === "pn") patchSettings(chatId, { pinPolls: !settings.pinPolls });
+      if (action === "rh") patchSettings(chatId, { reminderHours: wrap(settings.reminderHours + 1, 0, 2) });
       if (action === "wd") patchSettings(chatId, { autoWeekday: wrap(settings.autoWeekday + 1, 0, 6) });
       if (action === "hp") patchSettings(chatId, { autoHour: wrap(settings.autoHour + 1, 0, 23) });
       if (action === "hm") patchSettings(chatId, { autoHour: wrap(settings.autoHour - 1, 0, 23) });
@@ -366,12 +520,18 @@ async function main(): Promise<void> {
           placeQuorumCount: Math.max(MIN_QUORUM_COUNT, settings.placeQuorumCount - 1),
         });
       }
-      if (action === "tz" || action === "tr" || action === "tn") {
-        const field =
-          action === "tz" ? "zeroVotesMessage" : action === "tr" ? "resultMessage" : "nemoguMessage";
+      if (action === "tz" || action === "tr" || action === "tn" || action === "tu") {
+        const field: TextField =
+          action === "tz"
+            ? "zeroVotesMessage"
+            : action === "tr"
+              ? "resultMessage"
+              : action === "tn"
+                ? "nemoguMessage"
+                : "uncertainMessage";
         pending.set(userId, { kind: "text", field, chatId });
         await ctx.answerCbQuery();
-        await ctx.reply("Пришлите новый текст одним сообщением. стоп — отмена. Плейсхолдеры: {days} {places}");
+        await ctx.reply("Пришлите новый текст одним сообщением. стоп — отмена. Плейсхолдеры: {day} {days} {place} {places} {tags}");
         return;
       }
       await ctx.answerCbQuery();
@@ -425,13 +585,69 @@ async function main(): Promise<void> {
       }
     }
 
+    if (scope === "v") {
+      if (action === "x") {
+        pending.delete(userId);
+        await ctx.answerCbQuery("Готово");
+        try {
+          await ctx.editMessageReplyMarkup(undefined);
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+      if (action === "d" && extra !== undefined) {
+        const people = spectatorRows(chatId);
+        if (extra >= 0 && extra < people.length) {
+          upsertRosterPerson(chatId, people[extra].userId, { spectator: false });
+        }
+        pending.set(userId, { kind: "spectators", chatId });
+        const settings = getSettings(chatId);
+        const nextPeople = spectatorRows(chatId);
+        await ctx.answerCbQuery();
+        try {
+          await ctx.editMessageText(
+            spectatorsText(chatId, settings.title, nextPeople),
+            spectatorsKeyboard(chatId, nextPeople)
+          );
+        } catch {
+          /* not modified */
+        }
+        return;
+      }
+    }
+
     await ctx.answerCbQuery();
   });
 
   bot.on("poll_answer", async (ctx) => {
     const answer = ctx.pollAnswer;
     if (!answer.user || answer.user.is_bot) return;
-    await runtime.onPollAnswer(answer.poll_id, answer.user.id, answer.option_ids);
+    await runtime.onPollAnswer(answer.poll_id, answer.user, answer.option_ids);
+  });
+
+  bot.on("new_chat_members", async (ctx) => {
+    if (!isGroupChat(ctx.chat.type)) return;
+    for (const user of ctx.message.new_chat_members) {
+      runtime.rememberUser(ctx.chat.id, user);
+    }
+  });
+
+  bot.on("left_chat_member", async (ctx) => {
+    if (!isGroupChat(ctx.chat.type)) return;
+    runtime.markLeft(ctx.chat.id, ctx.message.left_chat_member);
+  });
+
+  bot.on("chat_member", async (ctx) => {
+    const update = ctx.chatMember;
+    if (!isGroupChat(update.chat.type)) return;
+    const user = update.new_chat_member.user;
+    const status = update.new_chat_member.status;
+    if (status === "left" || status === "kicked") {
+      runtime.markLeft(update.chat.id, user);
+      return;
+    }
+    runtime.rememberUser(update.chat.id, user);
   });
 
   bot.on("my_chat_member", async (ctx) => {
@@ -445,20 +661,14 @@ async function main(): Promise<void> {
     ensureChat(chat.id, title);
     await ctx.telegram.sendMessage(
       chat.id,
-      [
-        "DND-бот на месте. Напишите dnd help.",
-        "BotFather → /setprivacy → Disable, иначе команды без / не работают.",
-        "Дайте боту право закреплять сообщения — опросы пинятся.",
-      ].join(
-        "\n"
-      )
+      ["DND-бот на месте. Напишите dnd help.", "Дайте боту право закреплять сообщения — опросы пинятся."].join("\n")
     );
   });
 
   runtime.startTimers();
 
   await bot.launch({
-    allowedUpdates: ["message", "callback_query", "poll_answer", "my_chat_member"],
+    allowedUpdates: ["message", "callback_query", "poll_answer", "my_chat_member", "chat_member"],
   });
   console.log(`[bot] DND long-polling as @${me.username ?? me.id}`);
 
