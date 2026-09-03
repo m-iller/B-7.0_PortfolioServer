@@ -1,0 +1,360 @@
+.cv-mode {
+  --cv-paper: #f3f3f0;
+  --cv-sheet: #fbfbf9;
+  --cv-ink: #171717;
+  --cv-mute: #4d4d4d;
+  --cv-rule: #d2d2cc;
+  --cv-link: #1a4780;
+  --cv-sans: "Public Sans", "Segoe UI", sans-serif;
+  --cv-serif: "Literata", "Georgia", serif;
+}
+
+html.cv-mode,
+html.cv-mode body,
+html.cv-mode #root {
+  background: var(--cv-paper);
+  color: var(--cv-ink);
+  font-family: var(--cv-sans);
+}
+
+html.cv-mode {
+  scrollbar-color: var(--cv-ink) var(--cv-paper);
+}
+
+html.cv-mode ::selection {
+  background: var(--cv-ink);
+  color: var(--cv-paper);
+}
+
+html.cv-mode body {
+  caret-color: var(--cv-ink);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.cv-root {
+  min-height: 100%;
+  background: var(--cv-paper);
+}
+
+.cv-page {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 28px 24px 96px;
+  background: var(--cv-sheet);
+  border-left: 1px solid var(--cv-rule);
+  border-right: 1px solid var(--cv-rule);
+  min-height: 100vh;
+}
+
+.cv-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 48px;
+}
+
+.cv-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cv-ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 24px 100%;
+  background-repeat: no-repeat;
+  background-size: 0 1px;
+  padding-bottom: 2px;
+  transition: background-size 200ms cubic-bezier(0.22, 1, 0.32, 1);
+}
+
+.cv-back:hover {
+  text-decoration: none;
+  background-size: calc(100% - 24px) 1px;
+}
+
+.cv-back-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.cv-mode .lang-switch-paper .lang-switch-track {
+  min-width: 132px;
+  border: 1px solid var(--cv-ink);
+  background: var(--cv-sheet);
+  padding: 2px;
+}
+
+.cv-mode .lang-switch-paper .lang-switch-thumb {
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  background: var(--cv-ink);
+}
+
+.cv-mode .lang-switch-paper .lang-switch-opt {
+  color: var(--cv-mute);
+  font-family: var(--cv-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  letter-spacing: 0.04em;
+}
+
+.cv-mode .lang-switch-paper .lang-switch-opt[aria-pressed="true"] {
+  color: var(--cv-sheet);
+}
+
+.cv-mode .lang-switch-opt:focus-visible {
+  outline: 2px solid var(--cv-ink);
+  outline-offset: 2px;
+}
+
+.cv-masthead h1 {
+  font-family: var(--cv-serif);
+  font-size: 2.75rem;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin: 0 0 12px;
+  color: var(--cv-ink);
+}
+
+.cv-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.cv-contact a,
+.cv-page a {
+  color: var(--cv-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.cv-contact a:hover,
+.cv-page a:hover {
+  color: var(--cv-ink);
+}
+
+.cv-about {
+  margin: 0;
+  max-width: 65ch;
+  color: var(--cv-ink);
+}
+
+.cv-section {
+  margin-top: 52px;
+}
+
+.cv-section h2 {
+  margin: 0 0 18px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cv-ink);
+  font-family: var(--cv-serif);
+  font-size: 1.65rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.cv-jobs,
+.cv-skill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cv-jobs > li + li,
+.cv-project + .cv-project,
+.cv-folder + .cv-folder,
+.cv-skill-list > li + li {
+  margin-top: 28px;
+}
+
+.cv-job-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.cv-jobs h3,
+.cv-project h3,
+.cv-project h4,
+.cv-skill-group h3,
+.cv-folder-title {
+  margin: 0 0 4px;
+  font-family: var(--cv-serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.cv-project h4 {
+  font-size: 1.1rem;
+}
+
+.cv-period,
+.cv-skill-head span,
+.cv-empty {
+  color: var(--cv-mute);
+  font-size: 14px;
+  margin: 0;
+}
+
+.cv-org {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.cv-jobs p,
+.cv-project p,
+.cv-skill-list p {
+  margin: 0;
+  max-width: 65ch;
+}
+
+.cv-skill-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.cv-skill-group + .cv-skill-group {
+  margin-top: 28px;
+}
+
+.cv-skill-list p {
+  margin-top: 6px;
+}
+
+.cv-folder {
+  margin-top: 36px;
+}
+
+.cv-folder-title {
+  margin-bottom: 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--cv-rule);
+}
+
+.cv-project-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.cv-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.cv-gallery-item {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--cv-rule);
+  background: #fff;
+  cursor: zoom-in;
+}
+
+.cv-gallery-item:focus-visible {
+  outline: 2px solid var(--cv-ink);
+  outline-offset: 2px;
+}
+
+.cv-gallery img {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+.cv-video {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  margin: 12px 0;
+  background: #000;
+}
+
+.cv-embed {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  margin-top: 12px;
+  border: 1px solid var(--cv-rule);
+}
+
+.cv-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.cv-error {
+  color: #8a1f1f;
+}
+
+.cv-back:focus-visible {
+  outline: 2px solid var(--cv-ink);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-back {
+    transition: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .cv-page {
+    padding: 20px 16px 72px;
+    border: 0;
+  }
+
+  .cv-masthead h1 {
+    font-size: 2.1rem;
+  }
+
+  .cv-section {
+    margin-top: 40px;
+  }
+}
+
+@media print {
+  .cv-toolbar {
+    display: none;
+  }
+
+  .cv-page {
+    border: 0;
+    max-width: none;
+    padding: 0;
+  }
+
+  html.cv-mode,
+  html.cv-mode body {
+    background: #fff;
+  }
+}

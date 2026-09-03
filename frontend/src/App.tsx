@@ -1,49 +1,62 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Outlet, Route, Routes } from "react-router-dom";
+import { LangSwitch } from "./components/LangSwitch";
+import { LegacyHashRedirect } from "./components/LegacyHashRedirect";
 import { useLang } from "./i18n";
 import { AdminPage } from "./pages/AdminPage";
+import { CvPage } from "./pages/CvPage";
+import { EducationPage } from "./pages/EducationPage";
+import { ExperiencePage } from "./pages/ExperiencePage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { SkillsPage } from "./pages/SkillsPage";
 
-export function App() {
-  const { lang, setLang, t } = useLang();
+function TerminalLayout() {
+  const { t } = useLang();
 
   return (
     <div className="shell">
+      <LegacyHashRedirect />
       <header className="topbar">
-        <div className="prompt">root@portfolio:~$ ./resume.sh</div>
-        <nav className="nav">
-          <NavLink to="/" end>
-            [ {t.home} ]
+        <div className="topbar-row">
+          <div className="prompt">root@portfolio:~$ ./resume.sh</div>
+          <nav className="nav">
+            <NavLink to="/" end>
+              [ {t.home} ]
+            </NavLink>
+            <NavLink to="/projects">[ {t.projects} ]</NavLink>
+            <NavLink to="/skills">[ {t.skills} ]</NavLink>
+            <NavLink to="/experience">[ {t.experience} ]</NavLink>
+            <NavLink to="/education">[ {t.education} ]</NavLink>
+            <NavLink to="/admin">[ {t.admin} ]</NavLink>
+          </nav>
+        </div>
+        <div className="topbar-row topbar-tools">
+          <LangSwitch variant="terminal" />
+          <NavLink to="/cv" className="plain-launch">
+            {t.plainOpen}
           </NavLink>
-          <a href="/#personal">[ {t.personal} ]</a>
-          <a href="/#projects">[ {t.projects} ]</a>
-          <a href="/#skills">[ {t.skills} ]</a>
-          <a href="/#experience">[ {t.experience} ]</a>
-          <a href="/#education">[ {t.education} ]</a>
-          <NavLink to="/admin">[ {t.admin} ]</NavLink>
-          <span className="lang-toggle" role="group" aria-label="Language">
-            <button
-              type="button"
-              className={`btn ${lang === "en" ? "btn-accent" : ""}`}
-              onClick={() => setLang("en")}
-            >
-              [ EN ]
-            </button>
-            <button
-              type="button"
-              className={`btn ${lang === "ru" ? "btn-accent" : ""}`}
-              onClick={() => setLang("ru")}
-            >
-              [ RU ]
-            </button>
-          </span>
-        </nav>
+        </div>
       </header>
-      <Routes>
+      <Outlet />
+    </div>
+  );
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route element={<TerminalLayout />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/folder/:folderId" element={<ProjectsPage />} />
+        <Route path="/skills" element={<SkillsPage />} />
+        <Route path="/experience" element={<ExperiencePage />} />
+        <Route path="/education" element={<EducationPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={<AdminPage />} />
-      </Routes>
-    </div>
+      </Route>
+      <Route path="/cv" element={<CvPage />} />
+    </Routes>
   );
 }

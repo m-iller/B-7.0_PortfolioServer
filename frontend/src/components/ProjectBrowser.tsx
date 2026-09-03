@@ -1,14 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useLang } from "../i18n";
 import type { Project, ProjectFolder } from "../types";
 import { ProjectCard } from "./ProjectCard";
-
-const FOLDER_HASH = /^#projects\/folder\/([^/]+)$/;
-
-function folderIdFromHash(): string | null {
-  const match = window.location.hash.match(FOLDER_HASH);
-  return match?.[1] ?? null;
-}
 
 export function ProjectBrowser({
   projects,
@@ -18,25 +12,9 @@ export function ProjectBrowser({
   folders: ProjectFolder[];
 }) {
   const { lang, t } = useLang();
-  const [openFolderId, setOpenFolderId] = useState<string | null>(folderIdFromHash);
-
-  useEffect(() => {
-    function syncFromHash() {
-      setOpenFolderId(folderIdFromHash());
-    }
-    window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
-  }, []);
-
-  function enterFolder(id: string) {
-    window.location.hash = `projects/folder/${id}`;
-    setOpenFolderId(id);
-  }
-
-  function closeFolder() {
-    window.location.hash = "projects";
-    setOpenFolderId(null);
-  }
+  const { folderId } = useParams<{ folderId?: string }>();
+  const navigate = useNavigate();
+  const openFolderId = folderId ?? null;
 
   const activeFolder = useMemo(
     () => folders.find((folder) => folder.id === openFolderId) ?? null,
@@ -61,7 +39,7 @@ export function ProjectBrowser({
           $ {t.folderOpen} ~/projects/{name}
         </p>
         <div className="row folder-toolbar">
-          <button type="button" className="btn" onClick={closeFolder}>
+          <button type="button" className="btn" onClick={() => navigate("/projects")}>
             {t.folderBack}
           </button>
         </div>
@@ -86,7 +64,7 @@ export function ProjectBrowser({
                 key={folder.id}
                 type="button"
                 className="folder-card"
-                onClick={() => enterFolder(folder.id)}
+                onClick={() => navigate(`/projects/folder/${folder.id}`)}
               >
                 <span className="folder-name">
                   [dir] {name}/
