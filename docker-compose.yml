@@ -22,7 +22,9 @@ services:
       start_period: 20s
 
   bot:
-    build: .
+    # Same image as web. Do not set build: here — Compose would unpack
+    # the image twice and fill a small disk. Rebuild with:
+    #   docker compose build web && docker compose up -d
     image: portfolio-app:1.0.0
     container_name: portfolio_bot
     command: ["bot"]
