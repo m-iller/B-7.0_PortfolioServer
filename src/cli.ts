@@ -1,3 +1,4 @@
+import { ensureLocalSchema } from "./loadEnv.js";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
@@ -120,6 +121,7 @@ async function addProjectInteractive(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  ensureLocalSchema();
   await configureSqlite();
   const command = process.argv[2];
 

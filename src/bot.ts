@@ -1,3 +1,4 @@
+import "./loadEnv.js";
 import { Telegraf } from "telegraf";
 import { config } from "./config.js";
 import { isGroupChat, isPrivileged } from "./dnd/access.js";

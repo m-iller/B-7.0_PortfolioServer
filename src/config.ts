@@ -41,7 +41,7 @@ export const config = {
   isProduction,
   port: Number(optional("PORT", "3000")),
   publicOrigin: optional("PUBLIC_ORIGIN", "http://localhost:3000"),
-  databaseUrl: optional("DATABASE_URL", "file:./data/portfolio.db"),
+  databaseUrl: optional("DATABASE_URL", "file:../data/portfolio.db"),
   jwtSecret,
   jwtExpiresIn: optional("JWT_EXPIRES_IN", "8h"),
   cookieSecure: optional("COOKIE_SECURE", isProduction ? "true" : "false") === "true",

@@ -1,3 +1,4 @@
+import { ensureLocalSchema } from "./loadEnv.js";
 import path from "node:path";
 import cookieParser from "cookie-parser";
 import express from "express";
@@ -12,6 +13,7 @@ import { ensureAdmin } from "./services/adminService.js";
 import { startMediaCleanupScheduler } from "./services/mediaCleanup.js";
 
 async function main(): Promise<void> {
+  ensureLocalSchema();
   await configureSqlite();
   await ensureAdmin();
   startMediaCleanupScheduler();

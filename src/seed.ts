@@ -1,3 +1,4 @@
+import { ensureLocalSchema } from "./loadEnv.js";
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
@@ -55,6 +56,7 @@ async function alreadyHasUserData(): Promise<boolean> {
 }
 
 async function seed(): Promise<void> {
+  ensureLocalSchema();
   await configureSqlite();
   await ensureAdmin();
   await ensureProfile();
