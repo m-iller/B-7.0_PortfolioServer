@@ -17,6 +17,9 @@ export const WEEKDAY_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "�
 
 export const SCHEDULE_QUESTION = "Когда свободны?";
 export const PLACE_QUESTION = "Где?";
+export const ONESHOT_QUESTION = "Запустить голосование по месту?";
+export const ONESHOT_YES = "Да";
+export const ONESHOT_NO = "Нет";
 
 export const DEFAULT_POLL_TTL_HOURS = 12;
 export const MIN_POLL_TTL_HOURS = 1;

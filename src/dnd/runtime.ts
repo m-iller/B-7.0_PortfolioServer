@@ -12,6 +12,9 @@ import {
   DEFAULT_SUMMARY_DAY_ONLY,
   MAX_POLL_OPTIONS,
   NEMOGU,
+  ONESHOT_NO,
+  ONESHOT_QUESTION,
+  ONESHOT_YES,
   PLACE_QUESTION,
   POD_VOPROSOM,
   SCHEDULE_OPTIONS,
@@ -33,6 +36,7 @@ import {
   uniqueVoterCount,
   userPicked,
 } from "./logic.js";
+import { eligiblePlaces } from "./places.js";
 import { moscowParts } from "./time.js";
 import {
   deletePoll,
@@ -118,28 +122,6 @@ export class DndRuntime {
     });
   }
 
-  async confirmOneshot(chatId: number): Promise<string> {
-    return serial(chatId, async () => {
-      const session = getSession(chatId);
-      if (!session.oneshotOpen) return "Уже закрыто.";
-      patchSession(chatId, { oneshotOpen: false });
-      await this.editOneshotButtons(chatId, session.oneshotMessageId, "Да — запускаю место.");
-      const result = await this.startPlaceUnlocked(chatId, "manual");
-      return result || "Опрос места запущен.";
-    });
-  }
-
-  async declineOneshot(chatId: number): Promise<string> {
-    return serial(chatId, async () => {
-      const session = getSession(chatId);
-      if (!session.oneshotOpen) return "Уже закрыто.";
-      patchSession(chatId, { oneshotOpen: false, lastPlace: "" });
-      await this.editOneshotButtons(chatId, session.oneshotMessageId, "Нет — без опроса места.");
-      await this.maybePinSummary(chatId, session.oneshotDays, "");
-      return "Ок.";
-    });
-  }
-
   rememberUser(chatId: number, user: TgUser, extra?: Partial<RosterPerson>): void {
     if (user.is_bot) return;
     const current = getRoster(chatId)[String(user.id)];
@@ -204,28 +186,49 @@ export class DndRuntime {
     ensureChat(chatId, await this.chatTitle(chatId));
     await this.seedAdmins(chatId);
     await this.stopUnlocked(chatId, true);
-    patchSession(chatId, { oneshotOpen: false, lastDays: [], lastPlace: "" });
+    patchSession(chatId, {
+      oneshotOpen: false,
+      lastDays: [],
+      lastPlace: "",
+      oneshotDays: [],
+      oneshotMessageId: 0,
+      nemoguUserIds: [],
+      oneshotNoUserIds: [],
+    });
     return this.sendPoll(chatId, "schedule", SCHEDULE_QUESTION, [...SCHEDULE_OPTIONS], reason);
   }
 
   private async startPlaceUnlocked(chatId: number, reason: "manual" | "auto"): Promise<string> {
     ensureChat(chatId, await this.chatTitle(chatId));
-    const places = getPlaces(chatId).slice(0, MAX_POLL_OPTIONS);
-    if (places.length === 1) {
-      await this.stopUnlocked(chatId, true);
-      const text = `Место: ${places[0]}`;
-      await this.telegram.sendMessage(chatId, text);
-      const session = getSession(chatId);
-      patchSession(chatId, { lastPlace: places[0] });
-      await this.maybePinSummary(chatId, session.lastDays, places[0]);
+    const session = getSession(chatId);
+    const all = getPlaces(chatId);
+    const places = eligiblePlaces(all, [...session.nemoguUserIds, ...session.oneshotNoUserIds]).slice(
+      0,
+      MAX_POLL_OPTIONS
+    );
+    const names = places.map((place) => place.name);
+    const days = session.lastDays.length ? session.lastDays : session.oneshotDays;
+    if (all.length === 0) {
+      if (reason === "manual") return "Мест нет. Добавьте через dnd place edit.";
+      await this.maybePinSummary(chatId, days, "");
       return "";
     }
-    if (places.length < 2) {
-      if (reason === "manual") return "Мест меньше двух. Добавьте через dnd place edit.";
+    if (places.length === 0) {
+      const text = "Нет доступных мест для опроса (хозяева отметили «Не смогу» или «Нет»).";
+      if (reason === "manual") return text;
+      await this.telegram.sendMessage(chatId, text);
+      await this.maybePinSummary(chatId, days, "");
+      return "";
+    }
+    if (places.length === 1) {
+      await this.stopUnlocked(chatId, true);
+      await this.telegram.sendMessage(chatId, `Место: ${names[0]}`);
+      patchSession(chatId, { lastPlace: names[0], oneshotOpen: false });
+      await this.maybePinSummary(chatId, days, names[0]);
       return "";
     }
     await this.stopUnlocked(chatId, true);
-    return this.sendPoll(chatId, "place", PLACE_QUESTION, places, reason);
+    return this.sendPoll(chatId, "place", PLACE_QUESTION, names, reason);
   }
 
   private async sendPoll(
@@ -237,7 +240,7 @@ export class DndRuntime {
   ): Promise<string> {
     const message = await this.telegram.sendPoll(chatId, question, options, {
       is_anonymous: false,
-      allows_multiple_answers: true,
+      allows_multiple_answers: kind !== "oneshot",
     });
     const pollId = message.poll?.id;
     if (!pollId) {
@@ -336,6 +339,10 @@ export class DndRuntime {
       await this.finishSchedule(chatId, poll, settings, tallies);
       return;
     }
+    if (poll.kind === "oneshot") {
+      await this.finishOneshot(chatId, poll, tallies);
+      return;
+    }
     await this.finishPlace(chatId, poll, settings, tallies);
   }
 
@@ -349,7 +356,14 @@ export class DndRuntime {
     const outcome = scheduleResult(settings, tallies);
     const majority = majorityDays(tallies);
     const day = formatDay(majority);
-    patchSession(chatId, { lastDays: majority, lastPlace: "", oneshotOpen: false });
+    const nemoguUserIds = this.voterIdsWhoPicked(poll, NEMOGU);
+    patchSession(chatId, {
+      lastDays: majority,
+      lastPlace: "",
+      oneshotOpen: false,
+      nemoguUserIds,
+      oneshotNoUserIds: [],
+    });
 
     const uncertain = this.votersWhoPicked(chatId, poll, POD_VOPROSOM);
     if (uncertain.length > 0) {
@@ -368,15 +382,15 @@ export class DndRuntime {
         day,
         days: formatDays(outcome.names),
       });
+      await this.sendChat(chatId, poll.messageId, text);
       if (majority.length > 0) {
-        const sent = await this.sendChat(chatId, poll.messageId, text, oneshotKeyboard(chatId));
+        await this.sendPoll(chatId, "oneshot", ONESHOT_QUESTION, [ONESHOT_YES, ONESHOT_NO], "auto");
+        const oneshot = getPoll(chatId);
         patchSession(chatId, {
           oneshotOpen: true,
           oneshotDays: majority,
-          oneshotMessageId: sent,
+          oneshotMessageId: oneshot?.messageId ?? 0,
         });
-      } else {
-        await this.sendChat(chatId, poll.messageId, text);
       }
       pushHistory(chatId, historyEntry("schedule", majority, true));
       return;
@@ -407,6 +421,28 @@ export class DndRuntime {
     await this.maybePinSummary(chatId, session.lastDays, place);
   }
 
+  private async finishOneshot(
+    chatId: number,
+    poll: ActivePoll,
+    tallies: ReturnType<typeof talliesFromPoll>
+  ): Promise<void> {
+    const yes = tallies.find((row) => row.text === ONESHOT_YES)?.voterCount ?? 0;
+    const no = tallies.find((row) => row.text === ONESHOT_NO)?.voterCount ?? 0;
+    const oneshotNoUserIds = this.voterIdsWhoPicked(poll, ONESHOT_NO);
+    const session = getSession(chatId);
+    const days = session.oneshotDays.length ? session.oneshotDays : session.lastDays;
+    patchSession(chatId, { oneshotOpen: false, oneshotNoUserIds, lastDays: days });
+
+    if (yes > no) {
+      await this.sendChat(chatId, poll.messageId, "Большинство за «Да» — опрос места.");
+      await this.startPlaceUnlocked(chatId, "auto");
+      return;
+    }
+
+    await this.sendChat(chatId, poll.messageId, "Большинство не за запуск опроса места.");
+    await this.maybePinSummary(chatId, days, "");
+  }
+
   private applyAlwaysCan(
     chatId: number,
     poll: ActivePoll,
@@ -430,6 +466,16 @@ export class DndRuntime {
       const person = getRoster(chatId)[id];
       upsertRosterPerson(chatId, Number(id), { nemoguCount: (person?.nemoguCount ?? 0) + 1 });
     }
+  }
+
+  private voterIdsWhoPicked(poll: ActivePoll, name: string): number[] {
+    const ids: number[] = [];
+    for (const [id, optionIds] of Object.entries(poll.voters)) {
+      if (!userPicked(poll.options, optionIds, name)) continue;
+      const userId = Number(id);
+      if (Number.isFinite(userId)) ids.push(userId);
+    }
+    return ids;
   }
 
   private votersWhoPicked(chatId: number, poll: ActivePoll, name: string): RosterPerson[] {
@@ -539,22 +585,6 @@ export class DndRuntime {
     }
   }
 
-  private async editOneshotButtons(chatId: number, messageId: number, suffix: string): Promise<void> {
-    if (!messageId) return;
-    try {
-      await this.telegram.editMessageReplyMarkup(chatId, messageId, undefined, undefined);
-    } catch {
-      /* ignore */
-    }
-    try {
-      await this.telegram.sendMessage(chatId, suffix, {
-        reply_parameters: { message_id: messageId, allow_sending_without_reply: true },
-      });
-    } catch {
-      /* ignore */
-    }
-  }
-
   private async maybePinSummary(chatId: number, days: string[], place: string): Promise<void> {
     const day = formatDay(days);
     if (!day) return;
@@ -589,19 +619,6 @@ export class DndRuntime {
       /* already unpinned or no rights */
     }
   }
-}
-
-function oneshotKeyboard(chatId: number) {
-  return {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: "Да", callback_data: `o:y:${chatId}` },
-          { text: "Нет", callback_data: `o:n:${chatId}` },
-        ],
-      ],
-    },
-  };
 }
 
 function historyEntry(kind: HistoryEntry["kind"], names: string[], nemogu: boolean): HistoryEntry {

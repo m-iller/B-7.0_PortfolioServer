@@ -10,6 +10,7 @@ import {
   MIN_QUORUM_COUNT,
 } from "./dnd/constants.js";
 import { wrap } from "./dnd/logic.js";
+import { parsePlaceInput } from "./dnd/places.js";
 import { DndRuntime, NoActivePollError, statsText } from "./dnd/runtime.js";
 import {
   ensureChat,
@@ -101,6 +102,35 @@ function spectatorRows(chatId: number): { userId: number; person: RosterPerson }
   return Object.entries(getRoster(chatId))
     .filter(([, person]) => person.spectator && !person.left)
     .map(([id, person]) => ({ userId: Number(id), person }));
+}
+
+function addPlaceFromText(
+  chatId: number,
+  raw: string,
+  entities: readonly {
+    type: string;
+    offset: number;
+    length: number;
+    user?: { id: number; is_bot?: boolean; username?: string; first_name: string };
+  }[] | undefined,
+  runtime: DndRuntime
+): string | undefined {
+  const parsed = parsePlaceInput(raw, entities);
+  if (!parsed.name) return "Пустое название.";
+  const places = getPlaces(chatId);
+  if (places.length >= MAX_POLL_OPTIONS) return "Уже 10 мест — лимит опроса Telegram.";
+  if (places.some((place) => place.name === parsed.name)) return "Такое место уже есть.";
+  let ownerId: number | null = null;
+  if (parsed.ownerUser) {
+    runtime.rememberUser(chatId, parsed.ownerUser);
+    ownerId = parsed.ownerUser.id;
+  } else if (parsed.ownerUsername) {
+    const found = findRosterByUsername(chatId, parsed.ownerUsername);
+    if (!found) return "Нет в списке. Пусть напишет в чат или проголосует.";
+    ownerId = found.userId;
+  }
+  putPlaces(chatId, [...places, { name: parsed.name, ownerId }]);
+  return undefined;
 }
 
 async function showSpectators(
@@ -372,34 +402,23 @@ async function main(): Promise<void> {
         return;
       }
       const places = getPlaces(wait.chatId);
-      const addMatch = /^\+\s+(.+)$/.exec(trimmed);
       const delMatch = /^-\s+(\d+)$/.exec(trimmed);
-      if (wait.kind === "addPlace" && !addMatch && !delMatch) {
-        if (places.length >= MAX_POLL_OPTIONS) {
-          await reply("Уже 10 мест — лимит опроса Telegram.");
-          pending.set(userId, { kind: "places", chatId: wait.chatId });
-          return;
-        }
-        putPlaces(wait.chatId, [...places, trimmed]);
-        pending.set(userId, { kind: "places", chatId: wait.chatId });
-        const settings = getSettings(wait.chatId);
-        await reply(placesText(wait.chatId, settings.title, getPlaces(wait.chatId)), placesKeyboard(wait.chatId, getPlaces(wait.chatId)));
-        return;
-      }
-      if (addMatch) {
-        if (places.length >= MAX_POLL_OPTIONS) {
-          await reply("Уже 10 мест — лимит опроса Telegram.");
-          return;
-        }
-        putPlaces(wait.chatId, [...places, addMatch[1].trim()]);
-      } else if (delMatch) {
+      if (delMatch) {
         const index = Number(delMatch[1]) - 1;
         if (index < 0 || index >= places.length) {
           await reply("Нет такого номера.");
           return;
         }
-        const next = places.filter((_, i) => i !== index);
-        putPlaces(wait.chatId, next);
+        putPlaces(
+          wait.chatId,
+          places.filter((_, i) => i !== index)
+        );
+      } else if (wait.kind === "addPlace" || /^\+\s+/.test(trimmed)) {
+        const error = addPlaceFromText(wait.chatId, text, ctx.message.entities, runtime);
+        if (error) {
+          await reply(error);
+          return;
+        }
       } else if (wait.kind === "places") {
         return;
       }
@@ -450,26 +469,13 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (!(await isPrivileged(bot.telegram, chatId, userId))) {
-      await ctx.answerCbQuery("Недостаточно прав.", { show_alert: true });
+    if (scope === "o") {
+      await ctx.answerCbQuery("Кнопки устарели. Голосуйте в опросе «Да» / «Нет».", { show_alert: true });
       return;
     }
 
-    if (scope === "o") {
-      try {
-        if (action === "y") {
-          const result = await runtime.confirmOneshot(chatId);
-          await ctx.answerCbQuery(result.slice(0, 180));
-        } else if (action === "n") {
-          await runtime.declineOneshot(chatId);
-          await ctx.answerCbQuery("Без опроса места.");
-        } else {
-          await ctx.answerCbQuery();
-        }
-      } catch (error) {
-        console.error("[dnd] oneshot", error);
-        await ctx.answerCbQuery("Не вышло.", { show_alert: true });
-      }
+    if (!(await isPrivileged(bot.telegram, chatId, userId))) {
+      await ctx.answerCbQuery("Недостаточно прав.", { show_alert: true });
       return;
     }
 
@@ -559,7 +565,7 @@ async function main(): Promise<void> {
       if (action === "a") {
         pending.set(userId, { kind: "addPlace", chatId });
         await ctx.answerCbQuery();
-        await ctx.reply("Пришлите название места. стоп — отмена.");
+        await ctx.reply("Пришлите название. Хозяин: тег @user в том же сообщении. Без тега — без хозяина (кафе). стоп — отмена.");
         return;
       }
       if (action === "d" && extra !== undefined) {

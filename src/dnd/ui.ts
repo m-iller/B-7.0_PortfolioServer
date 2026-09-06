@@ -1,8 +1,10 @@
 import { Markup } from "telegraf";
 import { WEEKDAY_SHORT } from "./constants.js";
 import { mentionOf } from "./logic.js";
+import { formatPlace } from "./places.js";
+import { getRoster } from "./store.js";
 import { pad2 } from "./time.js";
-import type { ChatSettings, RosterPerson } from "./types.js";
+import type { ChatSettings, Place, RosterPerson } from "./types.js";
 
 export function helpText(): string {
   return [
@@ -11,7 +13,7 @@ export function helpText(): string {
     "dnd settings — настройки группы",
     "dnd vote start — опрос дней",
     "dnd place vote start — опрос места",
-    "dnd place edit — места (создатель чата или админ бота)",
+    "dnd place edit — места, хозяин через тег @user (создатель чата или админ бота)",
     "dnd stop — закрыть текущий опрос (создатель чата или админ бота)",
     "dnd always — я всегда могу (в группе)",
     "dnd always @user — то же для другого (создатель / админ бота)",
@@ -104,17 +106,24 @@ export function settingsKeyboard(chatId: number, settings: ChatSettings) {
   ]);
 }
 
-export function placesText(chatId: number, title: string, places: string[]): string {
+export function placesText(chatId: number, title: string, places: Place[]): string {
+  const roster = getRoster(chatId);
   const list =
     places.length === 0
       ? "(пусто — нужно минимум 2 для опроса)"
-      : places.map((name, index) => `${index + 1}. ${name}`).join("\n");
-  return [`Места — ${title}`, `id: ${chatId}`, "", list, "", "Добавить: кнопка или «+ Название». Удалить: кнопка или «- 1». стоп — выход."].join(
-    "\n"
-  );
+      : places.map((place, index) => `${index + 1}. ${formatPlace(place, roster)}`).join("\n");
+  return [
+    `Места — ${title}`,
+    `id: ${chatId}`,
+    "",
+    list,
+    "",
+    "Добавить: «+ Название» или «+ Название @хозяин». Без тега — без хозяина (кафе).",
+    "Удалить: кнопка или «- 1». стоп — выход.",
+  ].join("\n");
 }
 
-export function placesKeyboard(chatId: number, places: string[]) {
+export function placesKeyboard(chatId: number, places: Place[]) {
   const rows = [];
   if (places.length < 10) {
     rows.push([Markup.button.callback("добавить", cb("p", "a", chatId))]);

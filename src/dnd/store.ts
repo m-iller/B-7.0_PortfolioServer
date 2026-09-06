@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { config } from "../config.js";
 import { HISTORY_LIMIT } from "./constants.js";
+import { normalizePlace } from "./places.js";
 import {
   mergeRosterPerson,
   mergeSession,
@@ -10,13 +11,14 @@ import {
   type ChatSession,
   type ChatSettings,
   type HistoryEntry,
+  type Place,
   type RosterPerson,
 } from "./types.js";
 
 const dir = path.join(config.dataDir, "dnd");
 
 type SettingsFile = Record<string, ChatSettings>;
-type PlacesFile = Record<string, string[]>;
+type PlacesFile = Record<string, unknown[]>;
 type PollsFile = Record<string, ActivePoll>;
 type RosterFile = Record<string, Record<string, RosterPerson>>;
 type SessionFile = Record<string, ChatSession>;
@@ -87,18 +89,31 @@ export function patchSettings(chatId: number, patch: Partial<ChatSettings>): Cha
   return putSettings(chatId, { ...getSettings(chatId), ...patch });
 }
 
-export function getPlaces(chatId: number): string[] {
+export function getPlaces(chatId: number): Place[] {
   const all = readJson<PlacesFile>("places.json", {});
   const list = all[chatKey(chatId)];
-  return Array.isArray(list) ? list.filter((name) => typeof name === "string" && name.trim()) : [];
+  if (!Array.isArray(list)) return [];
+  const unique: Place[] = [];
+  const seen = new Set<string>();
+  for (const raw of list) {
+    const place = normalizePlace(raw);
+    if (!place || seen.has(place.name)) continue;
+    seen.add(place.name);
+    unique.push(place);
+  }
+  return unique;
 }
 
-export function putPlaces(chatId: number, places: string[]): string[] {
-  const all = readJson<PlacesFile>("places.json", {});
-  const unique: string[] = [];
-  for (const name of places.map((item) => item.trim().slice(0, 100)).filter(Boolean)) {
-    if (!unique.includes(name)) unique.push(name);
+export function putPlaces(chatId: number, places: Place[]): Place[] {
+  const unique: Place[] = [];
+  const seen = new Set<string>();
+  for (const raw of places) {
+    const place = normalizePlace(raw);
+    if (!place || seen.has(place.name)) continue;
+    seen.add(place.name);
+    unique.push(place);
   }
+  const all = readJson<PlacesFile>("places.json", {});
   all[chatKey(chatId)] = unique;
   writeJson("places.json", all);
   return unique;

@@ -36,8 +36,13 @@ export interface ChatSettings {
   pinPolls: boolean;
 }
 
+export interface Place {
+  name: string;
+  ownerId: number | null;
+}
+
 export interface ActivePoll {
-  kind: "schedule" | "place";
+  kind: "schedule" | "place" | "oneshot";
   chatId: number;
   messageId: number;
   pollId: string;
@@ -63,6 +68,8 @@ export interface ChatSession {
   oneshotDays: string[];
   oneshotMessageId: number;
   summaryMessageId: number;
+  nemoguUserIds: number[];
+  oneshotNoUserIds: number[];
 }
 
 export interface HistoryEntry {
@@ -104,6 +111,8 @@ export function defaultSession(): ChatSession {
     oneshotDays: [],
     oneshotMessageId: 0,
     summaryMessageId: 0,
+    nemoguUserIds: [],
+    oneshotNoUserIds: [],
   };
 }
 
@@ -153,7 +162,14 @@ export function mergeSession(raw: Partial<ChatSession> | undefined): ChatSession
     oneshotMessageId: clampInt(raw.oneshotMessageId, 0, Number.MAX_SAFE_INTEGER, 0),
     summaryMessageId: clampInt(raw.summaryMessageId, 0, Number.MAX_SAFE_INTEGER, 0),
     oneshotOpen: raw.oneshotOpen === true,
+    nemoguUserIds: numberIdList(raw.nemoguUserIds),
+    oneshotNoUserIds: numberIdList(raw.oneshotNoUserIds),
   };
+}
+
+function numberIdList(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(Number).filter((id) => Number.isFinite(id));
 }
 
 export function mergeRosterPerson(raw: Partial<RosterPerson> | undefined): RosterPerson {
