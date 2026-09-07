@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/var/www/B-7.0_PortfolioServer
-EnvironmentFile=-/var/www/B-7.0_PortfolioServer/.env
+WorkingDirectory=/var/www/server
+EnvironmentFile=-/var/www/server/.env
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/env node dist/bot.js
 Restart=always

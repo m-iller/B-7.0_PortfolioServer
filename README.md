@@ -11,11 +11,12 @@ Personal portfolio / resume site (terminal UI), `/admin` panel, and a DND Telegr
 
 ## VPS deploy
 
-Full steps: **[INSTRUCTIONS.md](INSTRUCTIONS.md)**. After Node is up, wipe Docker: **[DockerCleanup.md](DockerCleanup.md)**.
+Full steps: **[INSTRUCTIONS.md](INSTRUCTIONS.md)**. VPS path: `/var/www/server`.
+
+**First install:** INSTRUCTIONS §2. **Update:** `bash scripts/deploy.sh` or INSTRUCTIONS §3.
 
 ```bash
-cd /var/www/B-7.0_PortfolioServer
-# .env already filled
+cd /var/www/server
 npm ci
 npx prisma generate
 npm run build

@@ -65,7 +65,6 @@ pinDatabaseUrl();
 ensureDirs();
 
 export function ensureLocalSchema(): void {
-  if (fs.existsSync("/.dockerenv")) return;
   const prismaCli = path.resolve(process.cwd(), "node_modules", "prisma", "build", "index.js");
   execFileSync(process.execPath, [prismaCli, "db", "push", "--skip-generate"], {
     stdio: "inherit",
