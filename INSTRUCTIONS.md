@@ -1,56 +1,62 @@
 # Installation and usage
 
-Step-by-step guide for running this portfolio server on a local PC or a VDS. The app is designed to run in Docker. Data lives in two host folders so you can move the project between machines without losing content.
+Portfolio site + DND Telegram bot on **Node 20** and **systemd**. No Docker.
 
 | Path | Contents |
 | --- | --- |
-| `./data` | SQLite database (`portfolio.db`) |
-| `./data/dnd` | DND bot JSON (settings, places, active polls) |
+| `./data` | SQLite (`portfolio.db`) |
+| `./data/dnd` | DND bot JSON (settings, places, polls, roster) |
 | `./uploads` | Project images and videos |
+
+Default VPS path used below: `/var/www/B-7.0_PortfolioServer`. If yours differs, edit the two files in `deploy/` before copying them to systemd.
 
 ---
 
 ## 1. Requirements
 
-Install these on the host (Windows, Linux, or macOS):
+On the VPS (Ubuntu):
 
-- [Docker Engine](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/) (Docker Desktop includes both)
-- Git (to clone the repo)
-- A browser
+- Git
+- Node.js **20.x** (not 18, not nvm — systemd will not see nvm)
+- `openssl` / `ca-certificates` (Ubuntu already has these)
 
-Optional:
-
-- A Telegram account, if you want the bot
-- A domain and reverse proxy (Caddy or Nginx) for HTTPS on a VDS
-
-Check that Docker works:
+Check:
 
 ```bash
-docker --version
-docker compose version
+git --version
+node -v
+npm -v
 ```
+
+`node -v` must start with `v20`.
+
+If Node is missing or wrong:
+
+```bash
+apt-get update
+apt-get install -y ca-certificates curl gnupg
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+node -v
+```
+
+Optional: domain + Nginx/Caddy for HTTPS.
 
 ---
 
 ## 2. Get the project
 
 ```bash
-git clone <your-repo-url> B-7.0_PortfolioServer
-cd B-7.0_PortfolioServer
+git clone <your-repo-url> /var/www/B-7.0_PortfolioServer
+cd /var/www/B-7.0_PortfolioServer
+mkdir -p data/dnd uploads
 ```
 
-If the files are already on disk, `cd` into this directory instead.
-
-Create the data folders if they are missing:
+If the repo is already there (this VPS):
 
 ```bash
-mkdir -p data uploads
-```
-
-On Linux, make sure Docker can write to them:
-
-```bash
-chmod 777 data uploads
+cd /var/www/B-7.0_PortfolioServer
+git pull origin master
 ```
 
 ---
@@ -58,128 +64,160 @@ chmod 777 data uploads
 ## 3. Configure environment
 
 ```bash
-cp .env.example .env
+cd /var/www/B-7.0_PortfolioServer
+cp -n .env.example .env
 ```
 
-On Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Edit `.env` before the first public deploy. At minimum change these:
+`-n` does not overwrite an existing `.env`. Edit `.env`:
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `JWT_SECRET` | Yes in production | At least 32 random characters. Generate with `openssl rand -base64 48` |
-| `ADMIN_USERNAME` | Yes | Web admin login name |
-| `ADMIN_PASSWORD` | Yes | Web admin password. Hashed with bcrypt on every boot |
-| `PUBLIC_ORIGIN` | Yes | Public URL, e.g. `http://localhost:3000` or `https://your.domain` |
-| `COOKIE_SECURE` | Yes on HTTPS | Set `true` when the site is served over TLS |
-| `TELEGRAM_BOT_TOKEN` | No | Leave empty to idle the bot container |
-| `TELEGRAM_ADMIN_ID` | No | Numeric Telegram user id. Can edit DND settings and places in every group. Group creators can too. |
-| `UPLOAD_MAX_MB` | No | Default `64`. Raise this if you upload large videos |
-| `MEDIA_CLEANUP_GRACE_MIN` | No | Default `30`. New unused uploads are kept this many minutes so an unsaved admin form can still attach them |
-| `MEDIA_CLEANUP_INTERVAL_MIN` | No | Default `60`. Web container sweep interval |
-| `PORT` | No | Default `3000` (must match the compose port mapping) |
+| `JWT_SECRET` | Yes in production | ≥ 32 random characters. `openssl rand -base64 48` |
+| `ADMIN_USERNAME` | Yes | Web admin login |
+| `ADMIN_PASSWORD` | Yes | Hashed with bcrypt on boot |
+| `PUBLIC_ORIGIN` | Yes | Public URL, e.g. `https://your.domain` |
+| `COOKIE_SECURE` | Yes on HTTPS | `true` behind TLS |
+| `TELEGRAM_BOT_TOKEN` | No | Empty = bot process idles |
+| `TELEGRAM_ADMIN_ID` | No | Numeric Telegram user id |
+| `DATABASE_URL` | No | Default SQLite under `./data` |
+| `PORT` | No | Default `3000` |
 
-`DATABASE_URL` in `.env` is for local (non-Docker) runs. Docker Compose always overrides it to `file:/app/data/portfolio.db`.
+```env
+NODE_ENV=production
+PUBLIC_ORIGIN=https://your.domain
+COOKIE_SECURE=true
+JWT_SECRET=<long random value>
+ADMIN_PASSWORD=<strong password>
+```
 
-Do not commit `.env`. It is gitignored.
+Do not commit `.env`.
 
 ---
 
-## 4. Start the server (Docker)
+## 4. First deploy on the VPS
 
-From the project root:
-
-```bash
-docker compose up --build -d
-```
-
-- First build takes a few minutes.
-- `-d` runs in the background. Drop `-d` if you want logs in the terminal.
-
-Check status:
+**Stop Docker first** so port 3000 is free. Leave `data/` and `uploads/` in place (same folders Docker was bind-mounting).
 
 ```bash
-docker compose ps
-docker compose logs -f web
+cd /var/www/B-7.0_PortfolioServer
+docker compose stop || true
 ```
 
-The web container is named `portfolio_backend`. The bot container is named `portfolio_bot`.
+Build (this is `npm ci` + compile; it is much lighter than a Docker image build):
+
+```bash
+cd /var/www/B-7.0_PortfolioServer
+npm ci
+npx prisma generate
+npm run build
+npm --prefix frontend ci
+npm --prefix frontend run build
+npm run seed
+```
+
+`seed` creates schema, hashes the admin password, and inserts dummy content only if the database is empty. Existing `data/` is kept.
+
+Install systemd units (edit `WorkingDirectory` in both files if the path is not `/var/www/B-7.0_PortfolioServer`):
+
+```bash
+cp /var/www/B-7.0_PortfolioServer/deploy/portfolio-web.service /etc/systemd/system/
+cp /var/www/B-7.0_PortfolioServer/deploy/portfolio-bot.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now portfolio-web portfolio-bot
+systemctl status portfolio-web --no-pager
+systemctl status portfolio-bot --no-pager
+```
 
 Open:
 
-- Site: http://localhost:3000
-- Admin login: http://localhost:3000/login
-- Health: http://localhost:3000/api/health
+- Site: `http://YOUR_VPS_IP:3000`
+- Admin: `http://YOUR_VPS_IP:3000/login`
+- Health: `http://YOUR_VPS_IP:3000/api/health`
 
-First boot creates the SQLite schema, hashes the admin password, and seeds dummy projects, skills, experience, and education if the tables are empty.
-
-Stop:
+Logs:
 
 ```bash
-docker compose down
+journalctl -u portfolio-web -f
+journalctl -u portfolio-bot -f
 ```
 
-`down` does **not** delete `./data` or `./uploads`. Those stay on the host.
+When the site answers, remove Docker with **`DockerCleanup.md`**.
 
 ---
 
-## 5. VDS / production
+## 5. Later updates
 
-1. Copy the project to the server (git clone or `scp` / `rsync`).
-2. Install Docker and Compose on the VDS.
-3. Create `.env` as in section 3.
-4. Set:
+```bash
+cd /var/www/B-7.0_PortfolioServer
+bash scripts/deploy.sh
+```
 
-   ```env
-   NODE_ENV=production
-   PUBLIC_ORIGIN=https://your.domain
-   COOKIE_SECURE=true
-   JWT_SECRET=<long random value>
-   ADMIN_PASSWORD=<strong password>
-   ```
+That script: `git pull` → `npm ci` → Prisma generate → backend build → frontend build → seed (skips dummy data if you already have content) → restart both units.
 
-5. Start with `docker compose up --build -d`.
-6. Put TLS in front of port 3000. Example Caddyfile:
+Manual equivalent:
 
-   ```caddy
-   your.domain {
-       reverse_proxy 127.0.0.1:3000
-   }
-   ```
-
-   Example Nginx location:
-
-   ```nginx
-   location / {
-       proxy_pass http://127.0.0.1:3000;
-       proxy_set_header Host $host;
-       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-       proxy_set_header X-Forwarded-Proto $scheme;
-   }
-   ```
-
-7. Open `80`/`443` on the firewall. Keep `3000` bound to localhost if the proxy is on the same machine (change the compose port to `127.0.0.1:3000:3000`).
-
-Moving from a PC to a VDS: copy the repo plus the `data/` and `uploads/` folders. Then run `docker compose up --build -d` on the new host.
+```bash
+cd /var/www/B-7.0_PortfolioServer
+git pull origin master
+npm ci
+npx prisma generate
+npm run build
+npm --prefix frontend ci
+npm --prefix frontend run build
+npm run seed
+systemctl restart portfolio-web portfolio-bot
+```
 
 ---
 
-## 6. Using the website
+## 6. HTTPS / reverse proxy
+
+Keep Node on `127.0.0.1:3000` if the proxy is on the same machine. Set in `.env`:
+
+```env
+PORT=3000
+PUBLIC_ORIGIN=https://your.domain
+COOKIE_SECURE=true
+```
+
+Then restart: `systemctl restart portfolio-web`.
+
+Caddy:
+
+```caddy
+your.domain {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+Nginx:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Open `80`/`443` on the firewall. Do not expose `3000` to the world if the proxy is local.
+
+To bind Node to localhost only, change `src/index.ts` listen address is currently `0.0.0.0`. Firewall-off `3000` is the usual fix without a code change.
+
+---
+
+## 7. Using the website
 
 ### Public pages
 
 The home page is a single terminal-style landing with five sections:
 
 - Language toggle `[ EN ]` / `[ RU ]` in the top bar (saved in the browser)
-- **Personal** — name, about text, and a list of contacts (social links or nicknames without a URL)
-- **Projects** — bilingual title and description (both required). Tag-links, photo gallery (click for fullscreen), local videos, optional YouTube embed. The toggle switches the shown language.
-- **Skills** — full-width rows grouped by bilingual category. Years, proficiency, and description follow the EN/RU toggle
-- **Experience** — terminal log lines (role, company, description switch with language)
-- **Education** — terminal log lines (institution, specialty, details switch with language)
+- **Personal** — name, about text, contacts
+- **Projects** — bilingual title and description, tag-links, gallery, local videos, optional YouTube
+- **Skills** — rows grouped by bilingual category
+- **Experience** / **Education** — terminal log lines
 
 ### Web admin (`/admin`)
 
@@ -187,234 +225,94 @@ The home page is a single terminal-style landing with five sections:
 2. Sign in with `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
 3. You are redirected to `/admin`.
 
-The dashboard has five tabs. Each tab can create, edit, and delete records.
-
-**Profile**
-
-- Name EN + name RU
-- About EN + about RU
-- Contacts: add as many as you want. Each row has label EN/RU, value (nickname or handle), and optional URL (`https://`, `mailto:`, `tel:`). Leave URL empty for a nickname only.
-
-**Projects**
-
-- Title EN + title RU (both required)
-- Description EN + description RU (both required)
-- Optional YouTube URL
-- Image upload (jpeg / png / webp / gif)
-- Video upload (mp4 / webm / ogg / mov)
-- Tag-links: label + `https://...` URL (GitHub, Printables, docs, …)
-
-**Skills**
-
-- Title EN/RU, category EN/RU, proficiency EN/RU, description EN/RU (all required)
-- Years of experience (number)
-
-**Experience**
-
-- Company EN/RU, role EN/RU, description EN/RU (all required)
-- Period (`2020-2024`)
-
-**Education**
-
-- Institution EN/RU, specialty EN/RU, details EN/RU (all required)
-
-Use **[ logout ]** when finished. Sessions last 8 hours (`JWT_EXPIRES_IN`).
+Tabs: Profile, Projects, Skills, Experience, Education. Sessions last 8 hours (`JWT_EXPIRES_IN`).
 
 ---
 
-## 7. CLI (inside the web container)
+## 8. CLI
 
-The CLI writes to the same SQLite file and `uploads` volume as the website.
-
-```bash
-docker exec -it portfolio_backend cli add-skill --name-en "PTC Creo" --name-ru "PTC Creo" --category-en "Mechanics" --category-ru "Механика" --exp 2 --desc-en "Solid modeling" --desc-ru "Твердотельное моделирование"
-```
-
-Optional: `--proficiency-en Middle --proficiency-ru Средний`. Old single-language flags (`--name`, `--desc`) still copy into both languages.
+Run from the project root (same SQLite + `uploads` as the site):
 
 ```bash
-docker exec -it portfolio_backend cli add-experience --company "Lab" --role "Engineer" --period "2020-2024" --desc "Work log"
-docker exec -it portfolio_backend cli add-education --institution "University" --specialty "ME" --details "Degree notes"
-docker exec -it portfolio_backend cli set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
-docker exec -it portfolio_backend cli add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
-docker exec -it portfolio_backend cli add-contact --label-en Discord --label-ru Discord --value nickname#0000
-docker exec -it portfolio_backend cli list-projects
-docker exec -it portfolio_backend cli list-skills
-docker exec -it portfolio_backend cli cleanup-media
-docker exec -it portfolio_backend cli cleanup-media --force
+cd /var/www/B-7.0_PortfolioServer
+npm run cli -- add-skill --name-en "PTC Creo" --name-ru "PTC Creo" --category-en "Mechanics" --category-ru "Механика" --exp 2 --desc-en "Solid modeling" --desc-ru "Твердотельное моделирование"
+npm run cli -- add-experience --company "Lab" --role "Engineer" --period "2020-2024" --desc "Work log"
+npm run cli -- add-education --institution "University" --specialty "ME" --details "Degree notes"
+npm run cli -- set-profile --name-en "Name" --name-ru "Имя" --about-en "Bio" --about-ru "Био"
+npm run cli -- add-contact --label-en GitHub --label-ru GitHub --value myuser --url https://github.com/myuser
+npm run cli -- list-projects
+npm run cli -- list-skills
+npm run cli -- cleanup-media
+npm run cli -- cleanup-media --force
+npm run cli -- add-project
 ```
 
-### Interactive project
-
-```bash
-docker exec -it portfolio_backend cli add-project
-```
-
-The prompt asks for:
-
-1. Title EN
-2. Title RU
-3. Description EN
-4. Description RU
-5. YouTube URL (blank to skip)
-6. Tag links as `Label|https://url, Label|https://url` (blank to skip)
-7. Image paths, comma-separated (host or container paths that the container can read)
-8. Video paths, comma-separated (mp4/webm, blank to skip)
-
-Equivalent via npm (note the `--`):
-
-```bash
-docker exec -it portfolio_backend npm run cli -- add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc "Solid modeling"
-```
+`add-project` is interactive: title EN/RU, description EN/RU, YouTube, tag links `Label|https://url`, image paths, video paths.
 
 ---
 
-## 8. Telegram bot (DND timetable)
+## 9. Telegram bot (DND timetable)
 
-The bot container long-polls Telegram. It is **not** the portfolio editor. Portfolio content is still changed in `/admin` or the CLI. The bot only runs weekly D&D availability polls.
+The bot long-polls Telegram. It is **not** the portfolio editor. Portfolio content is still `/admin` or the CLI.
 
-Data lives in `./data/dnd/` (`settings.json`, `places.json`, `polls.json`), keyed by Telegram group id. It does not use the portfolio SQLite file.
+Data: `./data/dnd/` (JSON, keyed by group id). Not the SQLite file.
 
-### Enable the bot
+### Enable
 
-1. In Telegram, talk to [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token.
-2. **Required:** BotFather → `/setprivacy` → **Disable**. Plain-text commands (`dnd help`) do not reach the bot in groups if privacy is on.
-3. Add the bot to the group. Give it permission to send messages and polls.
-4. Get your numeric user id (for example via `@userinfobot`) if you want a global settings admin.
-5. Put values in `.env`:
-
-   ```env
-   TELEGRAM_BOT_TOKEN=123456:ABC...
-   TELEGRAM_ADMIN_ID=123456789
-   ```
-
-   `TELEGRAM_ADMIN_ID` is optional. Without it, only each group's creator can change settings and places.
-
-6. Restart:
-
-   ```bash
-   docker compose up -d --force-recreate bot
-   ```
-
-If `TELEGRAM_BOT_TOKEN` is empty, the bot container stays idle and does not crash.
-
-No group id in `.env`. Adding the bot to a group is enough. Several groups can use one bot.
-
-### Commands (plain text, Russian UI)
-
-Anyone in the group:
-
-| Command | Action |
-| --- | --- |
-| `dnd help` | Command list |
-| `dnd vote start` | Start the day poll now (stops an open poll in that group) |
-| `dnd place vote start` | Start the place poll now |
-
-Group creator or `TELEGRAM_ADMIN_ID`:
-
-| Command | Action |
-| --- | --- |
-| `dnd` | Settings (auto weekday/time GMT+3, «Не смогу» toggle, redactable result texts). Also works in private chat: pick a group |
-| `dnd place edit` | Add/delete places. Group or private chat |
-
-Default auto poll: Monday 00:00 GMT+3. Change weekday and time in `dnd`. Catch-up: if the bot was down past that minute, it still fires later the same Moscow day.
-
-### Day poll
-
-Question: `Когда свободны?`
-
-Options: Понедельник … Воскресенье, plus `Не смогу`. Non-anonymous, multiple answers, votes can be retracted.
-
-Closes after 12 hours, or when unique voters ≥ `getChatMemberCount` minus bots (lurkers count as missing votes). State is saved so a container restart still closes on time.
-
-Result:
-
-- If anyone picked `Не смогу` and that setting is on: majority is skipped (text is editable).
-- Else top 3 days that have at least one vote (zero-vote days are omitted).
-- No votes: `Никто ни за что не проголосовал.` (editable).
-- Template default: `Большинство выбрало {days}`. Placeholders `{days}` and `{places}`.
-
-If auto place vote is on and majority was not skipped, a place poll starts after the day poll.
-
-### Place poll
-
-Question: `Где?`
-
-Places are stored in `data/dnd/places.json` as `{ "<groupId>": ["Место 1", "Место 2"] }`. Telegram allows at most 10 options. Need at least 2 places for a poll; one place is announced without a poll.
-
-### BotFather
-
-`/setprivacy` → Disable. Restart the bot after changing privacy.
-
-
----
-
-## 9. Backup and restore
-
-Stop is optional but safer for a consistent copy:
+1. [@BotFather](https://t.me/BotFather) → `/newbot` → copy token.
+2. BotFather → `/setprivacy` → **Disable**.
+3. Add the bot to the group. Allow messages and polls.
+4. Optional: numeric user id in `TELEGRAM_ADMIN_ID`.
+5. Put token in `.env`, then:
 
 ```bash
-docker compose stop
-cp -a data uploads /path/to/backup/
-docker compose start
+systemctl restart portfolio-bot
+journalctl -u portfolio-bot -n 50 --no-pager
 ```
 
-Windows PowerShell:
+Empty `TELEGRAM_BOT_TOKEN`: process stays idle, does not crash.
 
-```powershell
-docker compose stop
-Copy-Item -Recurse data, uploads D:\backup\portfolio\
-docker compose start
-```
+### Commands (plain text)
 
-Restore: copy `data` and `uploads` back into the project root, then `docker compose up -d`.
+Anyone in the group: `dnd help`, `dnd vote start`, `dnd place vote start`, `dnd stats`.
+
+Group creator or `TELEGRAM_ADMIN_ID`: `dnd` / `dnd settings`, `dnd place edit`, `dnd stop`, `dnd always`, `dnd spectators`.
+
+Default auto poll: Monday 00:00 GMT+3. Change in `dnd`.
+
+People who never vote on the day poll count as «Не смогу» (leaderboard + skip-majority). Two or more tied winning days start a «Какой день?» poll (default 6 h) before the place poll.
 
 ---
 
-## 10. Updates
+## 10. Backup and restore
 
 ```bash
-git pull
-docker compose up --build -d
+systemctl stop portfolio-web portfolio-bot
+cp -a /var/www/B-7.0_PortfolioServer/data /var/www/B-7.0_PortfolioServer/uploads /path/to/backup/
+systemctl start portfolio-web portfolio-bot
 ```
 
-Schema changes are applied on container start (`prisma db push`). Seed data is **not** re-inserted if tables already have rows.
-
-Changing `ADMIN_PASSWORD` in `.env` and restarting the web container updates the stored hash.
+Restore: copy `data` and `uploads` back into the project root, then start the units.
 
 ---
 
-## 11. Local development without Docker
-
-Use this only for coding. Production should stay on Compose.
+## 11. Local development (PC)
 
 ```bash
 cp .env.example .env
-npm install
+npm ci
 npx prisma generate
 npx prisma db push
 npm run build
-npm --prefix frontend install
+npm --prefix frontend ci
 npm --prefix frontend run build
 npm run seed
 npm run start:web
 ```
 
-Hot reload (two terminals):
+Hot reload (two terminals): `npm run dev:web` and `npm --prefix frontend run dev` (Vite proxies `/api` and `/uploads`).
 
-```bash
-npm run dev:web
-npm --prefix frontend run dev
-```
-
-Vite (port 5173) proxies `/api` and `/uploads` to the backend on port 3000.
-
-Bot and CLI without Docker:
-
-```bash
-npm run start:bot
-npm run cli -- add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc "Solid modeling"
-```
+Bot: `npm run start:bot`.
 
 ---
 
@@ -422,23 +320,20 @@ npm run cli -- add-skill --name "PTC Creo" --category "Mechanics" --exp 2 --desc
 
 | Symptom | What to check |
 | --- | --- |
-| `env_file: .env` error | `.env` is missing. Copy it from `.env.example` |
-| Web exits: `JWT_SECRET must be at least 32 characters` | Lengthen `JWT_SECRET` in production |
-| Cannot write database / uploads | `chmod 777 data uploads` on Linux, or recreate the folders |
-| Admin login rejected | Username/password must match `.env`. Restart web after changing them |
-| Bot idle, no replies | Token empty, or container not recreated after editing `.env` |
-| Bot ignores `dnd help` in a group | BotFather `/setprivacy` is still enabled. Disable it, kick/re-add the bot |
-| Bot: cannot start poll | Bot needs permission to send messages and polls |
-| Images 404 | File missing under `./uploads`, or path not starting with `/uploads/` |
-| CSRF / 403 on admin | Hard-refresh `/login`, then sign in again |
-| Port already in use | Change the left side of `"3000:3000"` in `docker-compose.yml` |
+| `EADDRINUSE` / port 3000 | Docker still bound to 3000. `docker compose stop`, then `DockerCleanup.md` |
+| `JWT_SECRET must be at least 32 characters` | Lengthen `JWT_SECRET`, `systemctl restart portfolio-web` |
+| `env node`: No such file | Node 20 not on PATH. Install NodeSource 20.x, not nvm |
+| Cannot write database / uploads | `chown -R root:root data uploads` or whatever user the units run as (default root) |
+| Admin login rejected | Username/password in `.env`. Restart web after changing them |
+| Bot idle, no replies | Token empty, or unit not restarted after `.env` edit |
+| Bot ignores `dnd help` in a group | BotFather `/setprivacy` still on. Disable, kick/re-add |
+| Images 404 | File missing under `./uploads` |
+| Unit failed | `journalctl -u portfolio-web -n 80 --no-pager` |
 
-Useful logs:
+Health from the VPS:
 
 ```bash
-docker compose logs -f web
-docker compose logs -f bot
-docker exec -it portfolio_backend wget -qO- http://127.0.0.1:3000/api/health
+curl -sS http://127.0.0.1:3000/api/health
 ```
 
 ---
@@ -449,6 +344,7 @@ docker exec -it portfolio_backend wget -qO- http://127.0.0.1:3000/api/health
 - [ ] Strong `ADMIN_PASSWORD`
 - [ ] `COOKIE_SECURE=true` and HTTPS
 - [ ] `PUBLIC_ORIGIN` set to the real HTTPS URL
-- [ ] Telegram token set only if the DND bot is needed; `TELEGRAM_ADMIN_ID` is the global settings admin
-- [ ] Host firewall: do not expose port 3000 to the world if a reverse proxy is used
+- [ ] Telegram token only if the DND bot is needed
+- [ ] Firewall: do not expose port 3000 if a reverse proxy is used
 - [ ] Regular copies of `data/` and `uploads/`
+- [ ] Docker removed (`DockerCleanup.md`) so it cannot eat the disk again

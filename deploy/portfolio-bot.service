@@ -1,0 +1,18 @@
+[Unit]
+Description=Portfolio DND Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/B-7.0_PortfolioServer
+EnvironmentFile=-/var/www/B-7.0_PortfolioServer/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env node dist/bot.js
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

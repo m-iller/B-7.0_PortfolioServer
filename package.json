@@ -2,11 +2,11 @@
   "name": "portfolio-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Secure containerized portfolio, admin panel, DND Telegram bot, and CLI",
+  "description": "Portfolio, admin panel, DND Telegram bot, and CLI",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "build:all": "npm run build && npm --prefix frontend ci --omit=dev && npm --prefix frontend run build",
+    "build:all": "npm run build && npm --prefix frontend ci && npm --prefix frontend run build",
     "start:web": "node dist/index.js",
     "start:bot": "node dist/bot.js",
     "cli": "node dist/cli.js",
