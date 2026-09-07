@@ -501,6 +501,16 @@ async function main(): Promise<void> {
       if (action === "tl") {
         patchSettings(chatId, { pollTtlHours: wrap(settings.pollTtlHours - 1, MIN_POLL_TTL_HOURS, MAX_POLL_TTL_HOURS) });
       }
+      if (action === "dh") {
+        patchSettings(chatId, {
+          dayPickTtlHours: wrap(settings.dayPickTtlHours + 1, MIN_POLL_TTL_HOURS, MAX_POLL_TTL_HOURS),
+        });
+      }
+      if (action === "dl") {
+        patchSettings(chatId, {
+          dayPickTtlHours: wrap(settings.dayPickTtlHours - 1, MIN_POLL_TTL_HOURS, MAX_POLL_TTL_HOURS),
+        });
+      }
       if (action === "qa") patchSettings(chatId, { scheduleQuorumAll: !settings.scheduleQuorumAll });
       if (action === "qp") {
         patchSettings(chatId, {

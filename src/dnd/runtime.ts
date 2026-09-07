@@ -7,6 +7,7 @@ interface TgUser {
   first_name: string;
 }
 import {
+  DAYPICK_QUESTION,
   DEFAULT_REMINDER,
   DEFAULT_SUMMARY,
   DEFAULT_SUMMARY_DAY_ONLY,
@@ -28,6 +29,7 @@ import {
   formatDays,
   joinMentions,
   majorityDays,
+  optionIndex,
   placeResult,
   scheduleResult,
   shouldFireAuto,
@@ -207,7 +209,11 @@ export class DndRuntime {
       MAX_POLL_OPTIONS
     );
     const names = places.map((place) => place.name);
-    const days = session.lastDays.length ? session.lastDays : session.oneshotDays;
+    const days = [...new Set(session.lastDays.length ? session.lastDays : session.oneshotDays)];
+    if (places.length >= 2 && days.length > 1) {
+      await this.stopUnlocked(chatId, true);
+      return this.sendPoll(chatId, "daypick", DAYPICK_QUESTION, days, reason);
+    }
     if (all.length === 0) {
       if (reason === "manual") return "Мест нет. Добавьте через dnd place edit.";
       await this.maybePinSummary(chatId, days, "");
@@ -240,7 +246,7 @@ export class DndRuntime {
   ): Promise<string> {
     const message = await this.telegram.sendPoll(chatId, question, options, {
       is_anonymous: false,
-      allows_multiple_answers: kind !== "oneshot",
+      allows_multiple_answers: kind === "schedule" || kind === "place",
     });
     const pollId = message.poll?.id;
     if (!pollId) {
@@ -343,6 +349,10 @@ export class DndRuntime {
       await this.finishOneshot(chatId, poll, tallies);
       return;
     }
+    if (poll.kind === "daypick") {
+      await this.finishDaypick(chatId, poll, settings, tallies);
+      return;
+    }
     await this.finishPlace(chatId, poll, settings, tallies);
   }
 
@@ -352,6 +362,7 @@ export class DndRuntime {
     settings: ChatSettings,
     tallies: ReturnType<typeof talliesFromPoll>
   ): Promise<void> {
+    tallies = this.applyMissingAsNemogu(poll, tallies);
     this.bumpNemoguCounts(chatId, poll);
     const outcome = scheduleResult(settings, tallies);
     const majority = majorityDays(tallies);
@@ -441,6 +452,44 @@ export class DndRuntime {
 
     await this.sendChat(chatId, poll.messageId, "Большинство не за запуск опроса места.");
     await this.maybePinSummary(chatId, days, "");
+  }
+
+  private async finishDaypick(
+    chatId: number,
+    poll: ActivePoll,
+    settings: ChatSettings,
+    tallies: ReturnType<typeof talliesFromPoll>
+  ): Promise<void> {
+    const winners = majorityDays(tallies);
+    if (winners.length === 1) {
+      patchSession(chatId, { lastDays: winners, oneshotDays: winners, oneshotOpen: false });
+      await this.sendChat(chatId, poll.messageId, `День: ${formatDay(winners)}`);
+      await this.startPlaceUnlocked(chatId, "auto");
+      return;
+    }
+    if (winners.length === 0) {
+      await this.sendChat(chatId, poll.messageId, settings.zeroVotesMessage);
+      const session = getSession(chatId);
+      await this.maybePinSummary(chatId, session.lastDays, "");
+      return;
+    }
+    patchSession(chatId, { lastDays: winners, oneshotDays: winners, oneshotOpen: false });
+    await this.sendChat(chatId, poll.messageId, `Ничья: ${formatDays(winners)}. Ещё один опрос дня.`);
+    await this.startPlaceUnlocked(chatId, "auto");
+  }
+
+  private applyMissingAsNemogu(
+    poll: ActivePoll,
+    tallies: ReturnType<typeof talliesFromPoll>
+  ): ReturnType<typeof talliesFromPoll> {
+    const index = optionIndex(poll.options, NEMOGU);
+    if (index < 0) return tallies;
+    let next = tallies;
+    for (const { id } of this.missingVoters(poll)) {
+      poll.voters[id] = [index];
+      next = addVotesToTallies(next, [index]);
+    }
+    return next;
   }
 
   private applyAlwaysCan(
@@ -625,16 +674,20 @@ function historyEntry(kind: HistoryEntry["kind"], names: string[], nemogu: boole
   return { at: new Date().toISOString(), kind, names, nemogu };
 }
 
+function pollTtlHoursOf(poll: ActivePoll, settings: ChatSettings): number {
+  return poll.kind === "daypick" ? settings.dayPickTtlHours : settings.pollTtlHours;
+}
+
 function elapsedPastTtl(poll: ActivePoll, settings: ChatSettings): boolean {
   const started = Date.parse(poll.startedAt);
   if (!Number.isFinite(started)) return true;
-  return Date.now() - started >= settings.pollTtlHours * 60 * 60 * 1000;
+  return Date.now() - started >= pollTtlHoursOf(poll, settings) * 60 * 60 * 1000;
 }
 
 function reminderDue(poll: ActivePoll, settings: ChatSettings): boolean {
   const started = Date.parse(poll.startedAt);
   if (!Number.isFinite(started)) return false;
-  const ttlMs = settings.pollTtlHours * 60 * 60 * 1000;
+  const ttlMs = pollTtlHoursOf(poll, settings) * 60 * 60 * 1000;
   const remindMs = settings.reminderHours * 60 * 60 * 1000;
   if (remindMs <= 0 || remindMs >= ttlMs) return false;
   const elapsed = Date.now() - started;

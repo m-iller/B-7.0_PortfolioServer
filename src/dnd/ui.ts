@@ -39,7 +39,9 @@ export function settingsText(chatId: number, settings: ChatSettings, canEdit: bo
     `Авто-опрос дней: ${onOff(settings.autoVote)} · ${day} ${time} (GMT+3)`,
     `Авто-опрос места: ${onOff(settings.autoPlaceVote)} (после опроса дней; не если есть «Не смогу»)`,
     `«Не смогу» отменяет большинство: ${onOff(settings.skipIfNemogu)}`,
+    `Кто не проголосовал в опросе дней — считается «Не смогу»`,
     `Длительность опроса: ${settings.pollTtlHours} ч`,
+    `Длительность выбора дня: ${settings.dayPickTtlHours} ч`,
     `Напоминание: ${remind}`,
     `Пин: ${onOff(settings.pinPolls)}`,
     `Кворум дней: ${quorumLabel(settings.scheduleQuorumAll, settings.scheduleQuorumCount)}`,
@@ -74,6 +76,10 @@ export function settingsKeyboard(chatId: number, settings: ChatSettings) {
       Markup.button.callback("мин +", cb("s", "mp", chatId)),
       Markup.button.callback("срок −", cb("s", "tl", chatId)),
       Markup.button.callback("срок +", cb("s", "th", chatId)),
+    ],
+    [
+      Markup.button.callback("выбор дня −", cb("s", "dl", chatId)),
+      Markup.button.callback("выбор дня +", cb("s", "dh", chatId)),
     ],
     [
       Markup.button.callback(`пин ${onOff(settings.pinPolls)}`, cb("s", "pn", chatId)),

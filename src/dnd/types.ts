@@ -1,6 +1,7 @@
 import {
   DEFAULT_NEMOGU,
   DEFAULT_NEMOGU_OLD,
+  DEFAULT_DAYPICK_TTL_HOURS,
   DEFAULT_POLL_TTL_HOURS,
   DEFAULT_REMINDER_HOURS,
   DEFAULT_RESULT,
@@ -28,6 +29,7 @@ export interface ChatSettings {
   uncertainMessage: string;
   lastAutoDate: string;
   pollTtlHours: number;
+  dayPickTtlHours: number;
   scheduleQuorumAll: boolean;
   scheduleQuorumCount: number;
   placeQuorumAll: boolean;
@@ -42,7 +44,7 @@ export interface Place {
 }
 
 export interface ActivePoll {
-  kind: "schedule" | "place" | "oneshot";
+  kind: "schedule" | "place" | "oneshot" | "daypick";
   chatId: number;
   messageId: number;
   pollId: string;
@@ -94,6 +96,7 @@ export function defaultSettings(title: string): ChatSettings {
     uncertainMessage: DEFAULT_UNCERTAIN,
     lastAutoDate: moscowParts().dateKey,
     pollTtlHours: DEFAULT_POLL_TTL_HOURS,
+    dayPickTtlHours: DEFAULT_DAYPICK_TTL_HOURS,
     scheduleQuorumAll: true,
     scheduleQuorumCount: MIN_QUORUM_COUNT,
     placeQuorumAll: true,
@@ -130,6 +133,12 @@ export function mergeSettings(raw: Partial<ChatSettings> | undefined, title: str
     autoHour: clampInt(raw.autoHour, 0, 23, base.autoHour),
     autoMinute: clampInt(raw.autoMinute, 0, 59, base.autoMinute),
     pollTtlHours: clampInt(raw.pollTtlHours, MIN_POLL_TTL_HOURS, MAX_POLL_TTL_HOURS, base.pollTtlHours),
+    dayPickTtlHours: clampInt(
+      raw.dayPickTtlHours,
+      MIN_POLL_TTL_HOURS,
+      MAX_POLL_TTL_HOURS,
+      base.dayPickTtlHours
+    ),
     scheduleQuorumCount: clampInt(
       raw.scheduleQuorumCount,
       MIN_QUORUM_COUNT,
