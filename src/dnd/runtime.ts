@@ -42,7 +42,6 @@ import { moscowParts } from "./time.js";
 import {
   deletePoll,
   ensureChat,
-  getHistory,
   getPlaces,
   getPoll,
   getRoster,
@@ -215,14 +214,12 @@ export class DndRuntime {
     }
     if (all.length === 0) {
       if (reason === "manual") return "Мест нет. Добавьте через dnd place edit.";
-      await this.maybePinSummary(chatId, days, "");
       return "";
     }
     if (places.length === 0) {
       const text = "Нет доступных мест для опроса (хозяева отметили «Не смогу» или «Нет»).";
       if (reason === "manual") return text;
       await this.telegram.sendMessage(chatId, text);
-      await this.maybePinSummary(chatId, days, "");
       return "";
     }
     if (places.length === 1) {
@@ -433,9 +430,7 @@ export class DndRuntime {
     const yes = tallies.find((row) => row.text === ONESHOT_YES)?.voterCount ?? 0;
     const no = tallies.find((row) => row.text === ONESHOT_NO)?.voterCount ?? 0;
     const oneshotNoUserIds = this.voterIdsWhoPicked(poll, ONESHOT_NO);
-    const session = getSession(chatId);
-    const days = session.oneshotDays.length ? session.oneshotDays : session.lastDays;
-    patchSession(chatId, { oneshotOpen: false, oneshotNoUserIds, lastDays: days });
+    patchSession(chatId, { oneshotOpen: false, oneshotNoUserIds });
 
     if (yes > no) {
       await this.sendChat(chatId, poll.messageId, "Большинство за «Да» — опрос места.");
@@ -443,8 +438,8 @@ export class DndRuntime {
       return;
     }
 
-    await this.sendChat(chatId, poll.messageId, "Большинство не за запуск опроса места.");
-    await this.maybePinSummary(chatId, days, "");
+    patchSession(chatId, { lastDays: [], lastPlace: "", oneshotDays: [] });
+    await this.sendChat(chatId, poll.messageId, "Большинство не за запуск опроса места. Сессия на этой неделе отменена.");
   }
 
   private async finishDaypick(
@@ -712,22 +707,9 @@ export function statsText(chatId: number): string {
     lines.push("(пока никого)");
   } else {
     board.forEach((person, index) => {
-      const name = person.username ? `@${person.username}` : person.firstName;
+      const name = person.username || person.firstName;
       lines.push(`${index + 1}. ${name} — ${person.nemoguCount}`);
     });
-  }
-  const history = getHistory(chatId);
-  lines.push("", "Последние сессии:");
-  if (history.length === 0) {
-    lines.push("(пусто)");
-  } else {
-    for (const row of [...history].reverse()) {
-      const when = row.at.slice(0, 10);
-      const names = row.names.join(", ") || "—";
-      const tag = row.kind === "schedule" ? "дни" : "место";
-      const extra = row.nemogu ? " · не смогу" : "";
-      lines.push(`• ${when} ${tag}: ${names}${extra}`);
-    }
   }
   return lines.join("\n");
 }

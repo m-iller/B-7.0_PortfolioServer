@@ -1,4 +1,4 @@
-import { DAYS_RU, NEMOGU, POD_VOPROSOM, TOP_N } from "./constants.js";
+import { DAYS_RU, NEMOGU, TOP_N } from "./constants.js";
 import type { ChatSettings, RosterPerson } from "./types.js";
 import { moscowParts } from "./time.js";
 
@@ -91,12 +91,12 @@ export function scheduleResult(
   if (settings.skipIfNemogu && (nemogu?.voterCount ?? 0) > 0) {
     return { text: settings.nemoguMessage, skippedNemogu: true, names: majorityDays(tallies) };
   }
-  const names = topNamed(tallies, [NEMOGU, POD_VOPROSOM]);
+  const names = majorityDays(tallies);
   if (names.length === 0) {
     return { text: settings.zeroVotesMessage, skippedNemogu: false, names };
   }
   return {
-    text: applyTemplate(settings.resultMessage, { days: formatDays(names), day: formatDay(majorityDays(tallies)) }),
+    text: applyTemplate(settings.resultMessage, { days: formatDays(names), day: formatDay(names) }),
     skippedNemogu: false,
     names,
   };
