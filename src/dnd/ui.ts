@@ -51,7 +51,6 @@ export function settingsText(chatId: number, settings: ChatSettings, canEdit: bo
     `• пустой: ${settings.zeroVotesMessage}`,
     `• результат: ${settings.resultMessage}`,
     `• не смогу: ${settings.nemoguMessage}`,
-    `• под вопросом: ${settings.uncertainMessage}`,
   ];
   if (!canEdit) {
     lines.push("", "Менять может создатель чата или админ бота.");
@@ -104,10 +103,7 @@ export function settingsKeyboard(chatId: number, settings: ChatSettings) {
     [
       Markup.button.callback("текст: пустой", cb("s", "tz", chatId)),
       Markup.button.callback("текст: результат", cb("s", "tr", chatId)),
-    ],
-    [
       Markup.button.callback("текст: не смогу", cb("s", "tn", chatId)),
-      Markup.button.callback("текст: под вопросом", cb("s", "tu", chatId)),
     ],
   ]);
 }

@@ -17,7 +17,6 @@ import {
   ONESHOT_QUESTION,
   ONESHOT_YES,
   PLACE_QUESTION,
-  POD_VOPROSOM,
   SCHEDULE_OPTIONS,
   SCHEDULE_QUESTION,
 } from "./constants.js";
@@ -306,6 +305,7 @@ export class DndRuntime {
 
   private async checkAutos(): Promise<void> {
     for (const chatId of listChatIds()) {
+      if (getPoll(chatId)) continue;
       const settings = getSettings(chatId);
       if (!shouldFireAuto(settings)) continue;
       await this.startSchedulePoll(chatId, "auto").catch((error) => {
@@ -368,22 +368,15 @@ export class DndRuntime {
     const majority = majorityDays(tallies);
     const day = formatDay(majority);
     const nemoguUserIds = this.voterIdsWhoPicked(poll, NEMOGU);
+    const scheduleReadyUserIds = this.scheduleReadyIds(chatId, poll);
     patchSession(chatId, {
       lastDays: majority,
       lastPlace: "",
       oneshotOpen: false,
       nemoguUserIds,
       oneshotNoUserIds: [],
+      scheduleReadyUserIds,
     });
-
-    const uncertain = this.votersWhoPicked(chatId, poll, POD_VOPROSOM);
-    if (uncertain.length > 0) {
-      await this.sendChat(
-        chatId,
-        poll.messageId,
-        applyTemplate(settings.uncertainMessage, { tags: joinMentions(uncertain), day, days: formatDays(outcome.names) })
-      );
-    }
 
     const someoneNemogu = (tallies.find((row) => row.text === NEMOGU)?.voterCount ?? 0) > 0;
     if (settings.skipIfNemogu && someoneNemogu) {
@@ -517,6 +510,25 @@ export class DndRuntime {
     }
   }
 
+  private scheduleReadyIds(chatId: number, poll: ActivePoll): number[] {
+    const ids: number[] = [];
+    const seen = new Set<string>();
+    for (const [id, optionIds] of Object.entries(poll.voters)) {
+      if (!optionIds.length) continue;
+      if (userPicked(poll.options, optionIds, NEMOGU)) continue;
+      const userId = Number(id);
+      if (!Number.isFinite(userId)) continue;
+      seen.add(id);
+      ids.push(userId);
+    }
+    for (const [id, person] of Object.entries(getRoster(chatId))) {
+      if (!person.alwaysCan || person.left || person.spectator || seen.has(id)) continue;
+      const userId = Number(id);
+      if (Number.isFinite(userId)) ids.push(userId);
+    }
+    return ids;
+  }
+
   private voterIdsWhoPicked(poll: ActivePoll, name: string): number[] {
     const ids: number[] = [];
     for (const [id, optionIds] of Object.entries(poll.voters)) {
@@ -525,17 +537,6 @@ export class DndRuntime {
       if (Number.isFinite(userId)) ids.push(userId);
     }
     return ids;
-  }
-
-  private votersWhoPicked(chatId: number, poll: ActivePoll, name: string): RosterPerson[] {
-    const roster = getRoster(chatId);
-    const people: RosterPerson[] = [];
-    for (const [id, optionIds] of Object.entries(poll.voters)) {
-      if (!userPicked(poll.options, optionIds, name)) continue;
-      const person = roster[id];
-      if (person && !person.left) people.push(person);
-    }
-    return people;
   }
 
   private async peopleNotNemogu(chatId: number, poll: ActivePoll): Promise<RosterPerson[]> {
@@ -552,10 +553,17 @@ export class DndRuntime {
 
   private missingVoters(poll: ActivePoll): { id: string; person: RosterPerson }[] {
     const roster = getRoster(poll.chatId);
+    const session = getSession(poll.chatId);
+    const skip = new Set([...session.nemoguUserIds, ...session.oneshotNoUserIds].map(String));
+    const ready = new Set(session.scheduleReadyUserIds.map(String));
     const missing = [];
     for (const [id, person] of Object.entries(roster)) {
       if (person.left || person.spectator) continue;
       if (person.alwaysCan && poll.kind === "schedule") continue;
+      if (poll.kind === "place") {
+        if (skip.has(id)) continue;
+        if (ready.size > 0 && !ready.has(id)) continue;
+      }
       const votes = poll.voters[id];
       if (votes && votes.length > 0) continue;
       missing.push({ id, person });

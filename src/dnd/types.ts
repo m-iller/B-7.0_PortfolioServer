@@ -72,6 +72,7 @@ export interface ChatSession {
   summaryMessageId: number;
   nemoguUserIds: number[];
   oneshotNoUserIds: number[];
+  scheduleReadyUserIds: number[];
 }
 
 export interface HistoryEntry {
@@ -116,6 +117,7 @@ export function defaultSession(): ChatSession {
     summaryMessageId: 0,
     nemoguUserIds: [],
     oneshotNoUserIds: [],
+    scheduleReadyUserIds: [],
   };
 }
 
@@ -173,6 +175,7 @@ export function mergeSession(raw: Partial<ChatSession> | undefined): ChatSession
     oneshotOpen: raw.oneshotOpen === true,
     nemoguUserIds: numberIdList(raw.nemoguUserIds),
     oneshotNoUserIds: numberIdList(raw.oneshotNoUserIds),
+    scheduleReadyUserIds: numberIdList(raw.scheduleReadyUserIds),
   };
 }
 

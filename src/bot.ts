@@ -36,7 +36,7 @@ import {
 } from "./dnd/ui.js";
 import type { RosterPerson } from "./dnd/types.js";
 
-type TextField = "zeroVotesMessage" | "resultMessage" | "nemoguMessage" | "uncertainMessage";
+type TextField = "zeroVotesMessage" | "resultMessage" | "nemoguMessage";
 
 type Pending =
   | { kind: "text"; field: TextField; chatId: number }
@@ -184,6 +184,7 @@ async function main(): Promise<void> {
   const runtime = new DndRuntime(bot.telegram, me.id);
 
   bot.start(async (ctx) => {
+    if (ctx.chat && isGroupChat(ctx.chat.type)) return;
     await ctx.reply(helpText());
   });
 
@@ -537,15 +538,9 @@ async function main(): Promise<void> {
           placeQuorumCount: Math.max(MIN_QUORUM_COUNT, settings.placeQuorumCount - 1),
         });
       }
-      if (action === "tz" || action === "tr" || action === "tn" || action === "tu") {
+      if (action === "tz" || action === "tr" || action === "tn") {
         const field: TextField =
-          action === "tz"
-            ? "zeroVotesMessage"
-            : action === "tr"
-              ? "resultMessage"
-              : action === "tn"
-                ? "nemoguMessage"
-                : "uncertainMessage";
+          action === "tz" ? "zeroVotesMessage" : action === "tr" ? "resultMessage" : "nemoguMessage";
         pending.set(userId, { kind: "text", field, chatId });
         await ctx.answerCbQuery();
         await ctx.reply("Пришлите новый текст одним сообщением. стоп — отмена. Плейсхолдеры: {day} {days} {place} {places} {tags}");
@@ -675,7 +670,9 @@ async function main(): Promise<void> {
       status === "member" || status === "administrator" || status === "restricted";
     if (!present(update.new_chat_member.status) || present(update.old_chat_member.status)) return;
     const title = "title" in chat ? chat.title : String(chat.id);
+    const known = listChatIds().includes(chat.id);
     ensureChat(chat.id, title);
+    if (known) return;
     await ctx.telegram.sendMessage(
       chat.id,
       ["DND-бот на месте. Напишите dnd help.", "Дайте боту право закреплять сообщения — опросы пинятся."].join("\n")

@@ -11,7 +11,7 @@ export const DAYS_RU = [
 export const NEMOGU = "Не смогу";
 export const POD_VOPROSOM = "Под вопросом";
 
-export const SCHEDULE_OPTIONS: string[] = [...DAYS_RU, NEMOGU, POD_VOPROSOM];
+export const SCHEDULE_OPTIONS: string[] = [...DAYS_RU, NEMOGU];
 
 export const WEEKDAY_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"] as const;
 
