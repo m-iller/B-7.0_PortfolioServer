@@ -206,6 +206,12 @@ async function main(): Promise<void> {
       return;
     }
 
+    if (cmd === "dnd suck") {
+      pending.delete(userId);
+      await reply("Сам соси, утырок.");
+      return;
+    }
+
     if (cmd === "dnd stats") {
       pending.delete(userId);
       if (!isGroupChat(chat.type)) {
